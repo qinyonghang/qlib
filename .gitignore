@@ -1,0 +1,11 @@
+.vscode
+**/build
+**/install
+**/CMakeFiles
+**/cmake_install.cmake
+**/Makefile
+**/visualinfo.vcxproj*
+**/__pycache__/
+**vcxproj*
+**.sln
+third_party/
