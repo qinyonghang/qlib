@@ -6,16 +6,20 @@ set(${LIB_NAME}_SOURCE_DIR ${${LIB_NAME}_DOWNLOAD_DIR}/${LIB_NAME})
 
 if(NOT EXISTS ${${LIB_NAME}_SOURCE_DIR})
 
+get_filename_component(ROOT_DIR ${CMAKE_CURRENT_LIST_FILE} DIRECTORY)
+get_filename_component(ROOT_DIR ${ROOT_DIR} DIRECTORY)
+get_filename_component(ROOT_DIR ${ROOT_DIR} DIRECTORY)
+
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E env 
-        PYTHONPATH=${PROJECT_SOURCE_DIR}
-        ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/compile.py
+        PYTHONPATH=${ROOT_DIR}
+        ${Python3_EXECUTABLE} ${ROOT_DIR}/scripts/compile.py
             ${LIB_NAME} ${${LIB_NAME}_URL}
             --url_hash ${${LIB_NAME}_URL_HASH}
             --download_dir ${${LIB_NAME}_DOWNLOAD_DIR}
             --source_dir ${${LIB_NAME}_SOURCE_DIR}
             --skip_compile
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
         RESULT_VARIABLE result
         COMMAND_ECHO STDOUT
 )
