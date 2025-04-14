@@ -77,7 +77,16 @@ if (WITH_BENCHMARK STREQUAL true)
     target_link_libraries(${LIB_NAME} PRIVATE dhrystone2)
 endif ()
 
+include(${PROJECT_SOURCE_DIR}/cmake/python3.cmake)
+
+set(LINKED_TARGET ${LIB_NAME} CACHE STRING "Linked target" FORCE)
+file(GLOB cmake_source_files ${PROJECT_SOURCE_DIR}/cmake/project/*.cmake)
+foreach(cmake_file IN LISTS cmake_source_files)
+    if (NOT ${cmake_file} STREQUAL ${PROJECT_SOURCE_DIR}/cmake/python3.cmake)
+        message(STATUS "Including: ${cmake_file}")
+        include(${cmake_file})
+    endif()
+endforeach()
+
 include(${PROJECT_SOURCE_DIR}/cmake/install.cmake)
 include(${PROJECT_SOURCE_DIR}/cmake/tests.cmake)
-include(${PROJECT_SOURCE_DIR}/cmake/python3.cmake)
-include(${PROJECT_SOURCE_DIR}/cmake/spdlog.cmake)

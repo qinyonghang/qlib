@@ -25,10 +25,9 @@ execute_process(
     COMMAND ${CMAKE_COMMAND} -E env 
         PYTHONPATH=${PROJECT_SOURCE_DIR}
         ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/compile.py
-            --url ${${LIB_NAME}_URL}
+            ${LIB_NAME} ${${LIB_NAME}_URL}
             --url_hash ${${LIB_NAME}_URL_HASH}
             --download_dir ${${LIB_NAME}_DOWNLOAD_DIR}
-            --download_name ${LIB_NAME}
             --source_dir ${${LIB_NAME}_SOURCE_DIR}
             --build_dir ${${LIB_NAME}_BUILD_DIR}
             --install_dir ${${LIB_NAME}_INSTALL_DIR}

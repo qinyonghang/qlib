@@ -27,4 +27,4 @@ endif()
 endif()
 
 message(STATUS "Linked ${LIB_NAME} for ${LINKED_TARGET}. ROOT=${${LIB_NAME}_SOURCE_DIR}")
-target_include_directories(${LINKED_TARGET} PRIVATE ${${LIB_NAME}_SOURCE_DIR}/include)
+target_include_directories(${LINKED_TARGET} PUBLIC ${${LIB_NAME}_SOURCE_DIR}/include)
