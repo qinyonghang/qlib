@@ -9,6 +9,71 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
+#ifdef ARGPARSE_IMPLEMENTATION
+template <>
+spdlog::level::level_enum argparse::ArgumentParser::get<spdlog::level::level_enum>(
+    std::string_view arg_name) const {
+    THROW_EXCEPTION(m_is_parsed, "Nothing parsed, no arguments are available.");
+
+    auto value = (*this)[arg_name].get<size_t>();
+    THROW_EXCEPTION(value <= spdlog::level::n_levels, "value({}) is out of range!", value);
+
+    return static_cast<spdlog::level::level_enum>(value);
+}
+#endif
+
+#ifdef DJI_TYPEDEF_H
+template <>
+struct fmt::formatter<T_DjiVector3d> : public fmt::formatter<std::string> {
+    auto format(T_DjiVector3d const& value, format_context& ctx) const {
+        return fmt::formatter<std::string>::format(
+            fmt::format("[{},{},{}]", value.x, value.y, value.z), ctx);
+    }
+};
+
+template <>
+struct fmt::formatter<T_DjiVector3f> : public fmt::formatter<std::string> {
+    auto format(T_DjiVector3f const& value, format_context& ctx) const {
+        return fmt::formatter<std::string>::format(
+            fmt::format("[{:.2f},{:.2f},{:.2f}]", value.x, value.y, value.z), ctx);
+    }
+};
+
+template <>
+struct fmt::formatter<T_DjiDataTimestamp> : public fmt::formatter<std::string> {
+    auto format(T_DjiDataTimestamp const& value, format_context& ctx) const {
+        return fmt::formatter<std::string>::format(
+            fmt::format("[{},{}]", value.millisecond, value.microsecond), ctx);
+    }
+};
+#endif
+
+#ifdef DJI_FC_SUBSCRIPTION_H
+template <>
+struct fmt::formatter<T_DjiFcSubscriptionVelocity> : public fmt::formatter<std::string> {
+    auto format(T_DjiFcSubscriptionVelocity const& value, format_context& ctx) const {
+        return fmt::formatter<std::string>::format(fmt::format("[{},{}]", value.data, value.health),
+                                                   ctx);
+    }
+};
+
+template <>
+struct fmt::formatter<T_DjiFcSubscriptionRtkPosition> : public fmt::formatter<std::string> {
+    auto format(T_DjiFcSubscriptionRtkPosition const& value, format_context& ctx) const {
+        return fmt::formatter<std::string>::format(
+            fmt::format("[{:.4f},{:.4f},{:.2f}]", value.longitude, value.latitude, value.hfsl),
+            ctx);
+    }
+};
+#endif
+
+template <>
+struct fmt::formatter<spdlog::level::level_enum> : public fmt::formatter<int32_t> {
+    auto format(spdlog::level::level_enum const& value, format_context& ctx) const {
+        return fmt::formatter<int32_t>::format(static_cast<int32_t>(value), ctx);
+    }
+};
+
 template <class T, class Char>
 struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().str())>>
         : public fmt::formatter<std::string> {
@@ -42,6 +107,10 @@ struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().time_since
 #define qCritical(fmt, ...) spdlog::critical("[{}:{}]" fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 
 namespace qlib {
+
+namespace logger {
+using level = spdlog::level::level_enum;
+};
 
 class logger_register final {
 protected:
