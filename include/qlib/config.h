@@ -4,7 +4,7 @@
 
 namespace qlib {
 template <class T>
-class config {
+class config : public qlib::object<config<T>> {
 public:
     using base = qlib::object<config<T>>;
     using self = config<T>;
@@ -29,7 +29,7 @@ public:
 
         do {
             if (!std::filesystem::exists(path)) {
-                result = base::FILE_NOT_FOUND;
+                result = qlib::FILE_NOT_FOUND;
                 qError("path({}) is not exists!", path);
                 break;
             }
@@ -38,14 +38,14 @@ public:
 #ifdef YAML_IMPLEMENTATION
                 result = init(YAML::LoadFile(path));
 #else
-                result = base::FILE_NOT_SUPPORT;
+                result = qlib::FILE_NOT_SUPPORT;
                 qError("{} is not support!", path);
 #endif
                 if (0 != result) {
                     break;
                 }
             } else {
-                result = base::FILE_NOT_SUPPORT;
+                result = qlib::FILE_NOT_SUPPORT;
                 qError("{} is not support!", path);
                 break;
             }
@@ -62,8 +62,8 @@ public:
             try {
                 load(node);
             } catch (YAML::Exception const& e) {
-                result = base::YAML_PARSE_ERROR;
-                qError("Load failed! e={}, node={}", e.what(), node);
+                result = qlib::YAML_PARSE_ERROR;
+                qError("Load failed! e={}", e.what());
                 break;
             }
         } while (false);

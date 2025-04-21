@@ -15,10 +15,15 @@ spdlog::level::level_enum argparse::ArgumentParser::get<spdlog::level::level_enu
     std::string_view arg_name) const {
     THROW_EXCEPTION(m_is_parsed, "Nothing parsed, no arguments are available.");
 
-    auto value = (*this)[arg_name].get<size_t>();
+    spdlog::level::level_enum value{spdlog::level::n_levels};
+    try {
+        value = (*this)[arg_name].get<spdlog::level::level_enum>();
+    } catch (std::bad_any_cast const&) {
+        value = static_cast<spdlog::level::level_enum>((*this)[arg_name].get<size_t>());
+    }
     THROW_EXCEPTION(value <= spdlog::level::n_levels, "value({}) is out of range!", value);
 
-    return static_cast<spdlog::level::level_enum>(value);
+    return value;
 }
 #endif
 
@@ -67,6 +72,28 @@ struct fmt::formatter<T_DjiFcSubscriptionRtkPosition> : public fmt::formatter<st
 };
 #endif
 
+#ifdef DJI_PERCEPTION_H
+template <>
+struct fmt::formatter<T_DjiPerceptionRawImageInfo> : public fmt::formatter<std::string> {
+    auto format(T_DjiPerceptionRawImageInfo const& value, format_context& ctx) const {
+        return fmt::formatter<std::string>::format(
+            fmt::format("[0x{:x},{},{},{},{}]", value.index, value.direction, value.bpp,
+                        value.width, value.height),
+            ctx);
+    }
+};
+
+template <>
+struct fmt::formatter<T_DjiPerceptionImageInfo> : public fmt::formatter<std::string> {
+    auto format(T_DjiPerceptionImageInfo const& value, format_context& ctx) const {
+        return fmt::formatter<std::string>::format(
+            fmt::format("[{},{},{},{},{}]", value.rawInfo, value.dataId, value.sequence,
+                        value.dataType, value.timeStamp),
+            ctx);
+    }
+};
+#endif
+
 template <>
 struct fmt::formatter<spdlog::level::level_enum> : public fmt::formatter<int32_t> {
     auto format(spdlog::level::level_enum const& value, format_context& ctx) const {
@@ -110,11 +137,10 @@ namespace qlib {
 
 namespace logger {
 using level = spdlog::level::level_enum;
-};
 
-class logger_register final {
+class register2 final {
 protected:
-    logger_register() {
+    register2() {
 #ifdef _WIN32
         auto color_sink = std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
 #else
@@ -145,9 +171,11 @@ protected:
 
 public:
     static auto& get_instance() {
-        static logger_register impl;
+        static register2 impl;
         return impl;
     }
 };
+
+};  // namespace logger
 
 };  // namespace qlib

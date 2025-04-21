@@ -6,26 +6,20 @@
 
 #include "yaml-cpp/yaml.h"
 
-#ifdef FMT_VERSION
+namespace YAML {
 template <>
-struct fmt::formatter<YAML::Node> : public fmt::formatter<std::string> {
-    auto format(YAML::Node const& value, format_context& ctx) const {
-        return fmt::formatter<std::string>::format(value.template as<std::string>(), ctx);
-    }
-};
-#endif
-
-template <>
-struct YAML::convert<std::filesystem::path> {
-    static bool decode(YAML::Node const& node, std::filesystem::path& rhs) {
+struct convert<std::filesystem::path> {
+    static bool decode(Node const& node, std::filesystem::path& rhs) {
         std::string value;
-        auto result = YAML::convert<std::string>::decode(node, value);
+        auto result = convert<std::string>::decode(node, value);
         if (result) {
             rhs = value;
         }
         return result;
     }
 };
+
+}  // namespace YAML
 
 #ifdef SPDLOG_ACTIVE_LEVEL
 template <>

@@ -50,5 +50,5 @@ endif()
 
 find_package(yaml-cpp REQUIRED PATHS ${${LIB_NAME}_INSTALL_DIR} NO_DEFAULT_PATH)
 
-message(STATUS "Linked ${LIB_NAME} for ${LINKED_TARGET}. ROOT=${${LIB_NAME}_INSTALL_DIR}")
-target_link_libraries(${LINKED_TARGET} PUBLIC yaml-cpp::yaml-cpp)
+# message(STATUS "Linked ${LIB_NAME} for ${LINKED_TARGET}. ROOT=${${LIB_NAME}_INSTALL_DIR}")
+# target_link_libraries(${LINKED_TARGET} PUBLIC yaml-cpp::yaml-cpp)

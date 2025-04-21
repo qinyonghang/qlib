@@ -1,5 +1,5 @@
 set(LIB_NAME psdk)
-set(${LIB_NAME}_URL "https://github.com/dji-sdk/Payload-SDK/archive/refs/tags/3.11.0.tar.gz")
+set(${LIB_NAME}_URL "https://github.com/dji-sdk/Payload-SDK/archive/refs/tags/3.11.1.tar.gz")
 # set(${LIB_NAME}_URL_HASH "sha256:9962648c9b4f1a7bbc76fd8d9172555bad1871fdb14ff4f842ef87949682caa5")
 set(${LIB_NAME}_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/third_party)
 set(${LIB_NAME}_SOURCE_DIR ${${LIB_NAME}_DOWNLOAD_DIR}/${LIB_NAME})
@@ -47,6 +47,6 @@ target_compile_definitions(psdk INTERFACE
     -DSYSTEM_ARCH_LINUX=1
 )
 
-message(STATUS "Linked ${LIB_NAME} for ${LINKED_TARGET}. ROOT=${${LIB_NAME}_SOURCE_DIR}")
-target_link_libraries(${LINKED_TARGET} PUBLIC psdk)
+# message(STATUS "Linked ${LIB_NAME} for ${LINKED_TARGET}. ROOT=${${LIB_NAME}_SOURCE_DIR}")
+# target_link_libraries(${LINKED_TARGET} PUBLIC psdk)
 
