@@ -1,12 +1,16 @@
 #pragma once
 
+#include <filesystem>
+#include <vector>
+
+#include "qlib/object.h"
+#include "spdlog/fmt/chrono.h"
+#include "spdlog/sinks/basic_file_sink.h"
 #ifdef _WIN32
 #include "spdlog/sinks/wincolor_sink.h"
 #else
 #include "spdlog/sinks/ansicolor_sink.h"
 #endif
-#include "spdlog/fmt/chrono.h"
-#include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/spdlog.h"
 
 #ifdef ARGPARSE_IMPLEMENTATION
@@ -139,21 +143,56 @@ namespace logger {
 using level = spdlog::level::level_enum;
 
 class register2 final {
-protected:
-    register2() {
+    // protected:
+    //     std::string name;
+    //     bool console;
+    //     bool file;
+    //     std::filesystem::path log_file_prefix;
+
+public:
+    // register_factory() = default;
+
+    // auto& name(std::string const& _name) {
+    //     this->name = _name;
+    //     return *this;
+    // }
+
+    // auto& console(bool console) {
+    //     this->console = console;
+    //     return *this;
+    // }
+
+    // auto& file(bool file, std::filesystem::path const& log_file_prefix = "logs") {
+    //     this->file = file;
+    //     this->log_file_prefix = log_file_prefix;
+    //     return *this;
+    // }
+
+    static auto build(std::string const& name,
+                      bool console = true,
+                      bool file = true,
+                      std::filesystem::path const& log_file_prefix = "logs") {
+        std::vector<spdlog::sink_ptr> sinks;
+
+        if (console) {
 #ifdef _WIN32
-        auto color_sink = std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
+            auto color_sink = std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
 #else
-        auto color_sink = std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>();
+            auto color_sink = std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>();
 #endif
+            sinks.emplace_back(color_sink);
+        }
 
-        auto now = std::chrono::system_clock::now();
-        auto time = std::chrono::system_clock::to_time_t(now);
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-            fmt::format("logs/{:%Y-%m-%d_%H-%M-%S}.log", fmt::localtime(time)), true);
+        if (file) {
+            auto now = std::chrono::system_clock::now();
+            auto time = std::chrono::system_clock::to_time_t(now);
+            auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(fmt::format(
+                "{}/{:%Y-%m-%d_%H-%M-%S}.log", log_file_prefix.string(), fmt::localtime(time)));
 
-        spdlog::sinks_init_list sinks{color_sink, file_sink};
-        auto logger = std::make_shared<spdlog::logger>("End2End", sinks.begin(), sinks.end());
+            sinks.emplace_back(file_sink);
+        }
+
+        auto logger = std::make_shared<spdlog::logger>(name, sinks.begin(), sinks.end());
         spdlog::set_default_logger(logger);
 
         auto log_level = std::getenv("END2END_LOG_LEVEL");
@@ -167,12 +206,6 @@ protected:
                 qError("Invalid log level: {}", log_level);
             }
         }
-    }
-
-public:
-    static auto& get_instance() {
-        static register2 impl;
-        return impl;
     }
 };
 

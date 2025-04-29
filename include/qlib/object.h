@@ -37,6 +37,9 @@ enum error_code : int32_t {
 
 template <typename T>
 class object {
+protected:
+    object() = default;
+
 public:
     using string = qlib::string;
     using int8_t = qlib::int8_t;
