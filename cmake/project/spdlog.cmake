@@ -1,9 +1,9 @@
 set(LIB_NAME spdlog)
 set(${LIB_NAME}_URL "https://github.com/gabime/spdlog/archive/refs/tags/v1.15.0.tar.gz")
 set(${LIB_NAME}_URL_HASH "sha256:9962648c9b4f1a7bbc76fd8d9172555bad1871fdb14ff4f842ef87949682caa5")
-set(${LIB_NAME}_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/third_party)
+set(${LIB_NAME}_DOWNLOAD_DIR ${ROOT_DIR}/third_party)
 set(${LIB_NAME}_SOURCE_DIR ${${LIB_NAME}_DOWNLOAD_DIR}/${LIB_NAME})
-set(${LIB_NAME}_CMAKE_ARGS "-DSPDLOG_BUILD_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
+set(${LIB_NAME}_CMAKE_ARGS "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} -DSPDLOG_BUILD_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 set(${LIB_NAME}_BUILD_DIR ${${LIB_NAME}_SOURCE_DIR}/build2/linux)
 set(${LIB_NAME}_INSTALL_DIR ${${LIB_NAME}_SOURCE_DIR}/install2/linux)
@@ -21,10 +21,6 @@ endif()
 
 if(NOT EXISTS ${${LIB_NAME}_INSTALL_DIR})
 
-get_filename_component(ROOT_DIR ${CMAKE_CURRENT_LIST_FILE} DIRECTORY)
-get_filename_component(ROOT_DIR ${ROOT_DIR} DIRECTORY)
-get_filename_component(ROOT_DIR ${ROOT_DIR} DIRECTORY)
-
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E env 
         PYTHONPATH=${ROOT_DIR}
@@ -36,7 +32,7 @@ execute_process(
             --build_dir ${${LIB_NAME}_BUILD_DIR}
             --install_dir ${${LIB_NAME}_INSTALL_DIR}
             --cmake_args ${${LIB_NAME}_CMAKE_ARGS}
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${ROOT_DIR}
         RESULT_VARIABLE result
         COMMAND_ECHO STDOUT
 )
@@ -48,7 +44,4 @@ endif()
 endif()
 
 find_package(spdlog REQUIRED PATHS ${${LIB_NAME}_INSTALL_DIR} NO_DEFAULT_PATH)
-
-# message(STATUS "Linked ${LIB_NAME} for ${LINKED_TARGET}. ROOT=${${LIB_NAME}_INSTALL_DIR}")
-# target_link_libraries(${LINKED_TARGET} PUBLIC spdlog::spdlog)
-
+target_link_libraries(qlib PUBLIC spdlog::spdlog)

@@ -1,8 +1,8 @@
-set(download_dir ${PROJECT_SOURCE_DIR}/third_party)
+set(download_dir ${ROOT_DIR}/third_party)
 
 set(mqtt_cpp_url "https://github.com/eclipse-paho/paho.mqtt.cpp/archive/refs/tags/v1.5.2.tar.gz")
 set(mqtt_cpp_source_dir ${download_dir}/mqtt_cpp)
-set(mqtt_cpp_cmake_args "-DPAHO_BUILD_STATIC=TRUE -DPAHO_WITH_SSL=OFF -DPAHO_WITH_MQTT_C=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
+set(mqtt_cpp_cmake_args "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}  -DPAHO_BUILD_STATIC=TRUE -DPAHO_WITH_SSL=OFF -DPAHO_WITH_MQTT_C=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 set(mqtt_cpp_build_dir ${mqtt_cpp_source_dir}/build2/linux)
 set(mqtt_cpp_install_dir ${mqtt_cpp_source_dir}/install2/linux)
@@ -17,10 +17,6 @@ set(mqtt_cpp_cmake_args "${mqtt_cpp_cmake_args} -A Win32")
 else()
 message(FATAL_ERROR "Unsupported platform")
 endif()
-
-get_filename_component(ROOT_DIR ${CMAKE_CURRENT_LIST_FILE} DIRECTORY)
-get_filename_component(ROOT_DIR ${ROOT_DIR} DIRECTORY)
-get_filename_component(ROOT_DIR ${ROOT_DIR} DIRECTORY)
 
 if(NOT EXISTS ${mqtt_cpp_install_dir})
 
@@ -38,7 +34,7 @@ execute_process(
             --download_dir ${download_dir}
             --source_dir ${mqtt_c_source_dir}
             --skip_compile
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${ROOT_DIR}
         RESULT_VARIABLE result
         COMMAND_ECHO STDOUT
 )
@@ -59,7 +55,7 @@ execute_process(
             --install_dir ${mqtt_cpp_install_dir}
             --cmake_args ${mqtt_cpp_cmake_args}
             --before_compile "rm -r ${mqtt_cpp_source_dir}/externals/paho-mqtt-c" "ln -s ${mqtt_c_source_dir} ${mqtt_cpp_source_dir}/externals/"
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${ROOT_DIR}
         RESULT_VARIABLE result
         COMMAND_ECHO STDOUT
 )
@@ -72,5 +68,7 @@ endif()
 
 find_package(PahoMqttCpp REQUIRED PATHS ${mqtt_cpp_install_dir} NO_DEFAULT_PATH)
 
-# message(STATUS "Linked mqtt for ${LINKED_TARGET}. ROOT=${mqtt_cpp_install_dir}")
-# target_link_libraries(${LINKED_TARGET} PUBLIC PahoMqttCpp::paho-mqttpp3)
+add_library(mqtt INTERFACE)
+target_link_libraries(mqtt INTERFACE PahoMqttCpp::paho-mqttpp3)
+
+target_link_libraries(qlib PUBLIC mqtt)

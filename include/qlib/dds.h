@@ -118,7 +118,6 @@ public:
         return result;
     }
 
-    template <class Enable = void>
     int32_t init(string const& topic) {
         static_assert(std::is_same_v<T, void>, "Unsupported Implementation!");
         return -1;
@@ -312,6 +311,7 @@ public:
     template <class T>
     static DynamicType::_ref_type create() {
         static_assert(std::is_same_v<T, void>, "Unsupported Implementation!");
+        return nullptr;
     }
 
     template <class Builder>
@@ -494,7 +494,7 @@ public:
                 static_assert(std::is_same_v<T, void>, "Unsupported Implementation!");
             }
             return data_ptr;
-        })
+        });
     }
 };
 

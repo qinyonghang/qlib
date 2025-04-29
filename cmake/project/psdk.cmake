@@ -1,14 +1,10 @@
 set(LIB_NAME psdk)
 set(${LIB_NAME}_URL "https://github.com/dji-sdk/Payload-SDK/archive/refs/tags/3.11.1.tar.gz")
 # set(${LIB_NAME}_URL_HASH "sha256:9962648c9b4f1a7bbc76fd8d9172555bad1871fdb14ff4f842ef87949682caa5")
-set(${LIB_NAME}_DOWNLOAD_DIR ${PROJECT_SOURCE_DIR}/third_party)
+set(${LIB_NAME}_DOWNLOAD_DIR ${ROOT_DIR}/third_party)
 set(${LIB_NAME}_SOURCE_DIR ${${LIB_NAME}_DOWNLOAD_DIR}/${LIB_NAME})
 
 if(NOT EXISTS ${${LIB_NAME}_SOURCE_DIR})
-
-get_filename_component(ROOT_DIR ${CMAKE_CURRENT_LIST_FILE} DIRECTORY)
-get_filename_component(ROOT_DIR ${ROOT_DIR} DIRECTORY)
-get_filename_component(ROOT_DIR ${ROOT_DIR} DIRECTORY)
 
 execute_process(
     COMMAND ${CMAKE_COMMAND} -E env 
@@ -19,7 +15,7 @@ execute_process(
             --download_dir ${${LIB_NAME}_DOWNLOAD_DIR}
             --source_dir ${${LIB_NAME}_SOURCE_DIR}
             --skip_compile
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${ROOT_DIR}
         RESULT_VARIABLE result
         COMMAND_ECHO STDOUT
 )
@@ -32,21 +28,13 @@ endif()
 
 add_library(psdk STATIC IMPORTED)
 # Find library path.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 set_target_properties(psdk
     PROPERTIES
     IMPORTED_LOCATION ${${LIB_NAME}_SOURCE_DIR}/psdk_lib/lib/aarch64-linux-gnu-gcc/libpayloadsdk.a
     INTERFACE_INCLUDE_DIRECTORIES ${${LIB_NAME}_SOURCE_DIR}/psdk_lib/include
 )
-else()
-message(FATAL_ERROR "Unsupported platform")
-endif()
 
 target_compile_definitions(psdk INTERFACE
     -DPLATFORM_ARCH_AARCH64=1
     -DSYSTEM_ARCH_LINUX=1
 )
-
-# message(STATUS "Linked ${LIB_NAME} for ${LINKED_TARGET}. ROOT=${${LIB_NAME}_SOURCE_DIR}")
-# target_link_libraries(${LINKED_TARGET} PUBLIC psdk)
-
