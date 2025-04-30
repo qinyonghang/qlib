@@ -57,6 +57,9 @@ public:
         int32_t result{0};
 
         do {
+            extern void (*g_dds)(void);
+            THROW_EXCEPTION(g_dds, "g_dds is nullptr... ");
+
             auto impl_ptr = std::make_shared<impl>();
 
             auto factory = DomainParticipantFactory::get_instance();
@@ -214,6 +217,9 @@ public:
         int32_t result{0};
 
         do {
+            extern void (*g_dds)(void);
+            THROW_EXCEPTION(g_dds, "g_dds is nullptr... ");
+
             auto impl_ptr = std::make_shared<impl>();
 
             auto factory = DomainParticipantFactory::get_instance();
@@ -341,7 +347,8 @@ public:
 
         auto member_descriptor = traits<MemberDescriptor>::make_shared();
         member_descriptor->name("impl");
-        member_descriptor->type(type_factory->create_string_type(static_cast<uint32_t>(LENGTH_UNLIMITED))->build());
+        member_descriptor->type(
+            type_factory->create_string_type(static_cast<uint32_t>(LENGTH_UNLIMITED))->build());
         struct_builder->add_member(member_descriptor);
 
         return struct_builder->build();

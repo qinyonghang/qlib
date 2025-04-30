@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 
+if(NOT DEFINED PROJECT_NAME)
+project(qlib C CXX)
+endif()
+
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}.")
 

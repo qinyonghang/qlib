@@ -54,13 +54,6 @@ def extract_file(filepath: str, download_dir: str, source_dir: str, retry=5):
 class Downloader(object):
     def __init__(self, download_dir: str):
         self.download_dir = download_dir
-        self.list = []
-
-        try:
-            with open(os.path.join(self.download_dir, "downloader.txt"), "r") as f:
-                self.list = [line.strip() for line in f.readlines()]
-        except FileNotFoundError:
-            pass
 
     def __call__(
         self,
@@ -81,7 +74,7 @@ class Downloader(object):
             download_name = download_name + ext
 
         filepath = os.path.join(self.download_dir, download_name)
-        if url in self.list and os.path.exists(filepath) and os.path.exists(source_dir):
+        if os.path.exists(filepath) and os.path.exists(source_dir):
             return True
 
         while retry > 0:
@@ -115,9 +108,5 @@ class Downloader(object):
             filepath, self.download_dir, source_dir, retry=retry
         ):
             return False
-
-        if not url in self.list:
-            with open(os.path.join(self.download_dir, "downloader.txt"), "a") as f:
-                f.write(url + "\n")
 
         return True
