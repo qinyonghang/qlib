@@ -52,3 +52,5 @@ foreach(cmake_file IN LISTS cmake_source_files)
     message(STATUS "Including: ${cmake_file}")
     include(${cmake_file})
 endforeach()
+
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/tests.cmake)

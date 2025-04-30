@@ -105,30 +105,37 @@ struct fmt::formatter<spdlog::level::level_enum> : public fmt::formatter<int32_t
     }
 };
 
-template <class T, class Char>
-struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().str())>>
-        : public fmt::formatter<std::string> {
-    auto format(T const& value, format_context& ctx) const {
-        return fmt::formatter<std::string>::format(value.str(), ctx);
-    }
-};
-
-template <class T, class Char>
-struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().string())>>
-        : public fmt::formatter<std::string> {
-    auto format(T const& value, format_context& ctx) const {
+template <>
+struct fmt::formatter<std::filesystem::path> : public fmt::formatter<std::string> {
+    auto format(std::filesystem::path const& value, format_context& ctx) const {
         return fmt::formatter<std::string>::format(value.string(), ctx);
     }
 };
 
-template <class T, class Char>
-struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().time_since_epoch())>>
-        : public fmt::formatter<int64_t> {
-    auto format(T const& value, format_context& ctx) const {
-        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(value.time_since_epoch());
-        return fmt::formatter<int64_t>::format(time.count(), ctx);
-    }
-};
+// template <class T, class Char>
+// struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().str())>>
+//         : public fmt::formatter<std::string> {
+//     auto format(T const& value, format_context& ctx) const {
+//         return fmt::formatter<std::string>::format(value.str(), ctx);
+//     }
+// };
+
+// template <class T, class Char>
+// struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().string())>>
+//         : public fmt::formatter<std::string> {
+//     auto format(T const& value, format_context& ctx) const {
+//         return fmt::formatter<std::string>::format(value.string(), ctx);
+//     }
+// };
+
+// template <class T, class Char>
+// struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().time_since_epoch())>>
+//         : public fmt::formatter<int64_t> {
+//     auto format(T const& value, format_context& ctx) const {
+//         auto time = std::chrono::duration_cast<std::chrono::milliseconds>(value.time_since_epoch());
+//         return fmt::formatter<int64_t>::format(time.count(), ctx);
+//     }
+// };
 
 #define qTrace(fmt, ...) spdlog::trace("[{}:{}]" fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 #define qDebug(fmt, ...) spdlog::debug("[{}:{}]" fmt, __FILE__, __LINE__, ##__VA_ARGS__)

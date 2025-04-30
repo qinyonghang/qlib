@@ -144,7 +144,6 @@ public:
             } else {
                 result = impl_ptr->writer->write(&data);
             }
-            // qTrace("Published Data! status={}", result);
             if (result != 0) {
                 qError("Publish Failed!");
                 result = UNKNOWN_ERROR;
@@ -187,11 +186,11 @@ protected:
                 }
             }
 
-            void on_subscription_matched(DataReader* reader,
-                                         SubscriptionMatchedStatus const& info) override {
-                qTrace("Subscription Matched! Count: {}, Total Count: {}", info.current_count,
-                       info.total_count);
-            }
+            // void on_subscription_matched(DataReader* reader,
+            //                              SubscriptionMatchedStatus const& info) override {
+            //     qTrace("Subscription Matched! Count: {}, Total Count: {}", info.current_count,
+            //            info.total_count);
+            // }
         } reader_listener;
     };
 
