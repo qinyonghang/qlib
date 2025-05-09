@@ -112,13 +112,13 @@ struct fmt::formatter<std::filesystem::path> : public fmt::formatter<std::string
     }
 };
 
-// template <class T, class Char>
-// struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().str())>>
-//         : public fmt::formatter<std::string> {
-//     auto format(T const& value, format_context& ctx) const {
-//         return fmt::formatter<std::string>::format(value.str(), ctx);
-//     }
-// };
+template <class T, class Char>
+struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().to_string())>>
+        : public fmt::formatter<std::string> {
+    auto format(T const& value, format_context& ctx) const {
+        return fmt::formatter<std::string>::format(value.to_string(), ctx);
+    }
+};
 
 // template <class T, class Char>
 // struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().string())>>
