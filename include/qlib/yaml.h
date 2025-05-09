@@ -2,11 +2,10 @@
 
 #define YAML_IMPLEMENTATION
 
-#include <filesystem>
-
 #include "yaml-cpp/yaml.h"
 
 namespace YAML {
+#ifdef _GLIBCXX_FILESYSTEM
 template <>
 struct convert<std::filesystem::path> {
     static bool decode(Node const& node, std::filesystem::path& rhs) {
@@ -18,7 +17,7 @@ struct convert<std::filesystem::path> {
         return result;
     }
 };
-
+#endif
 }  // namespace YAML
 
 #ifdef SPDLOG_ACTIVE_LEVEL

@@ -76,7 +76,7 @@ public:
 
     auto const& data() const { return const_cast<self&>(*this).data(); }
 
-    operator bool() const { return this->impl_ptr; }
+    operator bool() const { return this->impl_ptr != nullptr; }
 
     operator T&() { return data(); }
 
