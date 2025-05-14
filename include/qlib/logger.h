@@ -25,7 +25,8 @@ spdlog::level::level_enum argparse::ArgumentParser::get<spdlog::level::level_enu
     } catch (std::bad_any_cast const&) {
         value = static_cast<spdlog::level::level_enum>((*this)[arg_name].get<size_t>());
     }
-    THROW_EXCEPTION(value <= spdlog::level::n_levels, "value({}) is out of range!", value);
+    THROW_EXCEPTION(value <= spdlog::level::n_levels, "value({}) must be less than {}!", value,
+                    spdlog::level::n_levels);
 
     return value;
 }

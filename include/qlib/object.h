@@ -1,5 +1,7 @@
 #pragma once
 
+#define OBJECT_IMPLEMENTATION
+
 #include <memory>
 #include <string>
 

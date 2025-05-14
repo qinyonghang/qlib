@@ -16,7 +16,6 @@
 #include "fastdds/dds/xtypes/dynamic_types/DynamicPubSubType.hpp"
 #include "fastdds/dds/xtypes/dynamic_types/DynamicTypeBuilderFactory.hpp"
 #include "qlib/exception.h"
-#include "qlib/logger.h"
 #include "qlib/object.h"
 
 namespace qlib {
@@ -24,6 +23,12 @@ namespace qlib {
 namespace dds {
 
 using namespace eprosima::fastdds::dds;
+
+auto register2 = []() {
+    extern void (*g_dds)(void);
+    THROW_EXCEPTION(g_dds, "g_dds is nullptr... ");
+    return true;
+}();
 
 template <typename T, class = void>
 class publisher final : public qlib::object<publisher<T>> {
@@ -57,9 +62,6 @@ public:
         int32_t result{0};
 
         do {
-            extern void (*g_dds)(void);
-            THROW_EXCEPTION(g_dds, "g_dds is nullptr... ");
-
             auto impl_ptr = std::make_shared<impl>();
 
             auto factory = DomainParticipantFactory::get_instance();
@@ -75,7 +77,6 @@ public:
 
             result = type.register_type(impl_ptr->participant.get());
             if (0 != result) {
-                qError("Register Type Failed!");
                 result = UNKNOWN_ERROR;
                 break;
             }
@@ -85,7 +86,6 @@ public:
             impl_ptr->publisher =
                 impl_ptr->participant->create_publisher(qos, nullptr, StatusMask::none());
             if (impl_ptr->publisher == nullptr) {
-                qError("Create Publisher Failed!");
                 result = UNKNOWN_ERROR;
                 break;
             }
@@ -96,7 +96,6 @@ public:
                 impl_ptr->topic =
                     impl_ptr->participant->create_topic(topic, type.get_type_name(), qos);
                 if (impl_ptr->topic == nullptr) {
-                    qError("Create Topic Failed!");
                     result = UNKNOWN_ERROR;
                     break;
                 }
@@ -107,7 +106,6 @@ public:
                 impl_ptr->publisher->get_default_datawriter_qos(qos);
                 impl_ptr->writer = impl_ptr->publisher->create_datawriter(impl_ptr->topic, qos);
                 if (impl_ptr->topic == nullptr) {
-                    qError("Create Writer Failed!");
                     result = UNKNOWN_ERROR;
                     break;
                 }
@@ -133,7 +131,6 @@ public:
             auto impl_ptr = std::static_pointer_cast<impl>(__impl_ptr);
 
             if (impl_ptr == nullptr) {
-                qError("Impl is nullptr!");
                 result = IMPL_NULLPTR;
                 break;
             }
@@ -145,7 +142,6 @@ public:
                 result = impl_ptr->writer->write(&data);
             }
             if (result != 0) {
-                qError("Publish Failed!");
                 result = UNKNOWN_ERROR;
                 break;
             }
@@ -216,9 +212,6 @@ public:
         int32_t result{0};
 
         do {
-            extern void (*g_dds)(void);
-            THROW_EXCEPTION(g_dds, "g_dds is nullptr... ");
-
             auto impl_ptr = std::make_shared<impl>();
 
             auto factory = DomainParticipantFactory::get_instance();
@@ -235,7 +228,6 @@ public:
             impl_ptr->type = type;
             result = impl_ptr->type.register_type(impl_ptr->participant.get());
             if (0 != result) {
-                qError("Register Type Failed!");
                 result = UNKNOWN_ERROR;
                 break;
             }
@@ -245,7 +237,6 @@ public:
             impl_ptr->subscriber =
                 impl_ptr->participant->create_subscriber(qos, nullptr, StatusMask::none());
             if (impl_ptr->subscriber == nullptr) {
-                qError("Create Subscriber Failed!");
                 result = UNKNOWN_ERROR;
                 break;
             }
@@ -256,7 +247,6 @@ public:
                 impl_ptr->topic =
                     impl_ptr->participant->create_topic(topic, type.get_type_name(), qos);
                 if (impl_ptr->topic == nullptr) {
-                    qError("Create Topic Failed!");
                     result = UNKNOWN_ERROR;
                     break;
                 }
@@ -269,7 +259,6 @@ public:
                 impl_ptr->reader = impl_ptr->subscriber->create_datareader(
                     impl_ptr->topic, qos, &impl_ptr->reader_listener, StatusMask::all());
                 if (impl_ptr->topic == nullptr) {
-                    qError("Create Writer Failed!");
                     result = UNKNOWN_ERROR;
                     break;
                 }
@@ -295,7 +284,6 @@ public:
         do {
             auto impl_ptr = std::static_pointer_cast<impl>(__impl_ptr);
             if (impl_ptr == nullptr) {
-                qError("Impl is nullptr!");
                 result = IMPL_NULLPTR;
                 break;
             }
