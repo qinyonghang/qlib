@@ -8,4 +8,14 @@ find_thirdparty(argparse
     "-DARGPARSE_BUILD_TESTS=OFF -DARGPARSE_BUILD_SAMPLES=OFF"
 )
 
-target_link_libraries(qlib PUBLIC argparse::argparse)
+# target_link_libraries(qlib PUBLIC argparse::argparse)
+
+add_library(qlib_argparse STATIC ${ROOT_DIR}/src/argparse.cpp)
+add_library(qlib::argparse ALIAS qlib_argparse)
+
+target_include_directories(qlib_argparse PUBLIC
+    "$<BUILD_INTERFACE:${ROOT_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+)
+
+target_link_libraries(qlib_argparse PUBLIC argparse::argparse)

@@ -148,34 +148,69 @@ struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().to_string(
 namespace qlib {
 
 namespace logger {
+using namespace spdlog;
 using level = spdlog::level::level_enum;
 
-class register2 final {
-    // protected:
-    //     std::string name;
-    //     bool console;
-    //     bool file;
-    //     std::filesystem::path log_file_prefix;
-
+class factory final : public object<factory> {
 public:
-    // register_factory() = default;
+    using self = factory;
+    using ptr = std::shared_ptr<self>;
+    using base = object<self>;
 
-    // auto& name(std::string const& _name) {
-    //     this->name = _name;
-    //     return *this;
-    // }
+    factory() = default;
 
-    // auto& console(bool console) {
-    //     this->console = console;
-    //     return *this;
-    // }
+    self& name(string const& name) {
+        self::_name = name;
+        return *this;
+    }
 
-    // auto& file(bool file, std::filesystem::path const& log_file_prefix = "logs") {
-    //     this->file = file;
-    //     this->log_file_prefix = log_file_prefix;
-    //     return *this;
-    // }
+    self& console(bool console = true, level level = level::info) {
+        self::_console = console;
+        self::_console_level = level;
+        return *this;
+    }
 
+    self& file(std::filesystem::path const& prefix = "logs", level level = level::trace) {
+        self::_prefix = prefix;
+        self::_file_level = level;
+        return *this;
+    }
+
+    auto build() const {
+        std::vector<spdlog::sink_ptr> sinks;
+
+        if (self::_console) {
+#ifdef _WIN32
+            auto color_sink = std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
+#else
+            auto color_sink = std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>();
+#endif
+            color_sink->set_level(self::_console_level);
+            sinks.emplace_back(color_sink);
+        }
+
+        if (self::_prefix != std::filesystem::path{}) {
+            auto now = std::chrono::system_clock::now();
+            auto time = std::chrono::system_clock::to_time_t(now);
+            auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
+                fmt::format("{}/{:%Y-%m-%d_%H-%M-%S}.log", self::_prefix, fmt::localtime(time)));
+            file_sink->set_level(_file_level);
+            sinks.emplace_back(file_sink);
+        }
+
+        return std::make_shared<spdlog::logger>(self::_name, sinks.begin(), sinks.end());
+    }
+
+protected:
+    string _name{"default"};
+    bool _console{false};
+    level _console_level;
+    std::filesystem::path _prefix;
+    level _file_level;
+};
+
+class register2 final {
+public:
     static auto build(std::string const& name,
                       bool console = true,
                       bool file = true,
@@ -218,5 +253,4 @@ public:
 };
 
 };  // namespace logger
-
 };  // namespace qlib

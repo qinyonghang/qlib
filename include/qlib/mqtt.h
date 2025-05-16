@@ -9,6 +9,8 @@
 
 namespace qlib {
 
+using namespace ::mqtt;
+
 namespace mqtt {
 
 class action_listener final : public ::mqtt::iaction_listener {
@@ -74,7 +76,6 @@ public:
     void connection_lost(string const& cause) override {}
 
     void message_arrived(::mqtt::const_message_ptr msg) override {
-        qTrace("Receive MQTT Message({},{})!", msg->get_topic(), msg->get_payload_str());
         if (cb != nullptr) {
             cb(msg->get_topic(), msg->get_payload_str());
         }

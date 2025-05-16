@@ -7,4 +7,14 @@ find_thirdparty(nlohmann_json
     "-DJSON_BuildTests=OFF"
 )
 
-target_link_libraries(qlib PUBLIC nlohmann_json::nlohmann_json)
+# target_link_libraries(qlib PUBLIC nlohmann_json::nlohmann_json)
+
+add_library(qlib_json STATIC ${ROOT_DIR}/src/json.cpp)
+add_library(qlib::json ALIAS qlib_json)
+
+target_include_directories(qlib_json PUBLIC
+    "$<BUILD_INTERFACE:${ROOT_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+)
+
+target_link_libraries(qlib_json PUBLIC nlohmann_json::nlohmann_json)

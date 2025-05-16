@@ -14,7 +14,7 @@ execute_process(
         PYTHONPATH=${root_dir}
         ${Python3_EXECUTABLE} ${root_dir}/scripts/compile.py
             ${lib_name} ${lib_url}
-            --url_hash ${lib_url_hash}
+            --url_hash "${lib_url_hash}"
             --download_dir ${download_dir}
             --source_dir ${source_dir}
             --skip_compile

@@ -8,4 +8,6 @@
 **/__pycache__/
 **vcxproj*
 **.sln
+**.egg-info
+package/*.so
 third_party/

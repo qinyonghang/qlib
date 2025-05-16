@@ -32,7 +32,3 @@ if(NOT Python3_FOUND)
         message(FATAL_ERROR "Python not found in current environment and .conda directory does not exist.")
     endif()
 endif()
-
-# message(STATUS "Linked Python3 for ${PROJECT_NAME}. Python3_EXECUTABLE=${Python3_EXECUTABLE}")
-# target_include_directories(${PROJECT_NAME} PRIVATE ${Python3_INCLUDE_DIRS})
-# target_link_libraries(${PROJECT_NAME} PRIVATE ${Python3_LIBRARIES})

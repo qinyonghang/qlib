@@ -25,6 +25,8 @@ def get_args():
     parser.add_argument("--before_compile", nargs="+", default=None)
     parser.add_argument("--after_compile", nargs="+", default=None)
     parser.add_argument("--working_thread", type=int, default=4)
+    parser.add_argument("--system", type=str, default=platform.system())
+    parser.add_argument("--arch", type=str, default="64")
     return parser.parse_args()
 
 
@@ -39,11 +41,18 @@ if __name__ == "__main__":
     if args.source_dir is None:
         args.source_dir = os.path.join(args.download_dir, args.name)
 
+    if args.system == "Windows":
+        suffix = "windows" if args.arch == "64" else "win32"
+    elif args.system == "Linux":
+        suffix = "linux" if args.arch == "64" else "linux32"
+    else:
+        suffix = ""
+
     if args.build_dir is None:
-        args.build_dir = os.path.join(args.source_dir, "build2")
+        args.build_dir = os.path.join(args.source_dir, "build2", suffix)
 
     if args.install_dir is None:
-        args.install_dir = os.path.join(args.source_dir, "install2")
+        args.install_dir = os.path.join(args.source_dir, "install2", suffix)
 
     if args.cmakelists_dir is None:
         args.cmakelists_dir = args.source_dir

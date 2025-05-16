@@ -6,4 +6,13 @@ find_thirdparty(yaml-cpp
     ${ROOT_DIR}/third_party
     "-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DYAML_BUILD_SHARED_LIBS=OFF"
 )
-target_link_libraries(qlib PUBLIC yaml-cpp::yaml-cpp)
+
+add_library(qlib_yaml STATIC ${ROOT_DIR}/src/yaml.cpp)
+add_library(qlib::yaml ALIAS qlib_yaml)
+
+target_include_directories(qlib_yaml PUBLIC
+    "$<BUILD_INTERFACE:${ROOT_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+)
+
+target_link_libraries(qlib_yaml PUBLIC yaml-cpp::yaml-cpp)

@@ -40,9 +40,21 @@ find_thirdparty(fastdds
     "-DCMAKE_POSITION_INDEPENDENT_CODE=ON -DBUILD_SHARED_LIBS=ON -DCOMPILE_TOOLS=ON -Dfastcdr_DIR=${ROOT_DIR}/third_party/fastcdr/install2/linux/lib/cmake/fastcdr -Dfoonathan_memory_DIR=${ROOT_DIR}/third_party/foonathan_memory/install2/linux/lib/foonathan_memory/cmake -DAsio_INCLUDE_DIR=${ROOT_DIR}/third_party/asio/asio/include -DTinyXML2_DIR=${ROOT_DIR}/third_party/tinyxml2/install2/linux/lib/cmake/tinyxml2"
 )
 
-target_link_libraries(qlib PUBLIC fastcdr foonathan_memory fastdds)
+# target_link_libraries(qlib PUBLIC fastcdr foonathan_memory fastdds)
 
 install(FILES ${ROOT_DIR}/third_party/tinyxml2/install2/linux/lib/libtinyxml2.so.11.0.0 DESTINATION lib RENAME libtinyxml2.so.11)
 install(FILES ${ROOT_DIR}/third_party/foonathan_memory/install2/linux/lib/libfoonathan_memory-0.7.3.so DESTINATION lib)
 install(FILES ${ROOT_DIR}/third_party/fastcdr/install2/linux/lib/libfastcdr.so.2.3.0 DESTINATION lib RENAME libfastcdr.so.2)
 install(FILES ${ROOT_DIR}/third_party/fastdds/install2/linux/lib/libfastdds.so.3.2.1 DESTINATION lib RENAME libfastdds.so.3.2)
+
+add_library(qlib_dds STATIC ${ROOT_DIR}/src/dds.cpp)
+add_library(qlib::dds ALIAS qlib_dds)
+
+target_compile_options(qlib_dds PRIVATE -fPIC)
+
+target_include_directories(qlib_dds PUBLIC
+    "$<BUILD_INTERFACE:${ROOT_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+)
+
+target_link_libraries(qlib_dds PUBLIC fastcdr foonathan_memory fastdds)

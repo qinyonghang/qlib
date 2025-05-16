@@ -1,8 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 
+#include "qlib/exception.h"
 #include "qlib/object.h"
 
 namespace qlib {
@@ -11,17 +13,22 @@ class ref_singleton final : public qlib::object<ref_singleton<T>> {
 public:
     template <class... Args>
     static std::shared_ptr<T> make(Args&&... args) {
-        if (value_ptr == nullptr) {
-            std::lock_guard<std::mutex> lock{mutex};
+        if constexpr ((sizeof...(Args) != 0) || (std::is_default_constructible_v<T>)) {
             if (value_ptr == nullptr) {
-                value_ptr = new T(std::forward<Args>(args)...);
+                std::lock_guard<std::mutex> lock{mutex};
+                if (value_ptr == nullptr) {
+                    value_ptr = new T(std::forward<Args>(args)...);
+                }
             }
+        } else {
+            THROW_EXCEPTION(value_ptr != nullptr, "Object do not constructed!");
         }
 
         ++count;
         return std::shared_ptr<T>{value_ptr, [](T* ptr) {
                                       --count;
                                       if (count == 0) {
+                                          std::lock_guard<std::mutex> lock{mutex};
                                           delete value_ptr;
                                           value_ptr = nullptr;
                                       }
@@ -34,4 +41,4 @@ protected:
     static inline std::atomic<uint32_t> count{0u};
 };
 
-};
+};  // namespace qlib

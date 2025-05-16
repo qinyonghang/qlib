@@ -10,6 +10,12 @@ template <>
 std::filesystem::path argparse::ArgumentParser::get<std::filesystem::path>(
     std::string_view arg_name) const {
     THROW_EXCEPTION(m_is_parsed, "Nothing parsed, no arguments are available.");
-    return (*this)[arg_name].get<std::string>();
+    std::filesystem::path result;
+    try {
+        result = std::filesystem::path((*this)[arg_name].get<std::filesystem::path>());
+    } catch (std::bad_any_cast const& e) {
+        result = (*this)[arg_name].get<std::string>();
+    }
+    return result;
 }
 #endif

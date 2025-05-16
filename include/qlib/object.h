@@ -25,7 +25,7 @@ struct position {
     float64_t relative_height; /*! relative to takeoff height*/
 };
 
-enum error_code : int32_t {
+enum : int32_t {
     OK = 0,
     UNKNOWN_ERROR = -1,
     IMPL_NULLPTR = -2,
@@ -35,6 +35,13 @@ enum error_code : int32_t {
     FILE_INVALID = -6,
     YAML_PARSE_ERROR = -7,
     ERRORCODE_MAX = -8
+};
+
+enum class error : int32_t {
+    unknown = -1,
+    impl_nullptr = -2,
+    param_invalid = -3,
+    file_not_found = -4,
 };
 
 template <typename T>
@@ -61,5 +68,21 @@ public:
 
 template <class T>
 using object_ptr = typename object<T>::ptr;
+
+static inline bool likely(bool ok) {
+#ifdef __glibc_likely
+    return __glibc_likely(ok);
+#else
+    return ok;
+#endif
+}
+
+static inline  bool unlikely(bool ok) {
+#ifdef __glibc_unlikely
+    return __glibc_unlikely(ok);
+#else
+    return ok;
+#endif
+}
 
 };  // namespace qlib

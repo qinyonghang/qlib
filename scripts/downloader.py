@@ -29,7 +29,6 @@ def extract_file(filepath: str, download_dir: str, source_dir: str, retry=5):
                 ref.extractall(download_dir)
             else:
                 ref.extractall(source_dir)
-
     else:
         print(f"不支持的文件格式: {filepath}")
         return False
@@ -87,7 +86,7 @@ class Downloader(object):
                         if chunk:
                             f.write(chunk)
 
-            if url_hash is None:
+            if url_hash is None or url_hash == "":
                 break
             _hash, _hash_str = url_hash.split(":")
             _hash = _hash.lower()
