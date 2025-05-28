@@ -304,34 +304,42 @@ public:
     using ptr = std::shared_ptr<self>;
     using base = qlib::object<self>;
 
-    static ptr make(dds::type::ptr const& type_ptr, string const& topic) {
-        return std::make_shared<self>(type_ptr, topic);
+    static ptr make(dds::type::ptr const& type_ptr,
+                    string const& topic,
+                    DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
+        return std::make_shared<self>(type_ptr, topic, qos);
     }
 
     template <class T>
-    static ptr make(string const& topic) {
-        return std::make_shared<self>(topic, std::in_place_type<T>);
+    static ptr make(string const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
+        return std::make_shared<self>(topic, qos, std::in_place_type<T>);
     }
 
     publisher() = default;
 
     template <class T>
-    publisher(string const& topic, std::in_place_type_t<T> const& = std::in_place_type<T>) {
-        int32_t result{init<T>(topic)};
+    publisher(string const& topic,
+              DataWriterQos qos = DATAWRITER_QOS_DEFAULT,
+              std::in_place_type_t<T> const& = std::in_place_type<T>) {
+        int32_t result{init<T>(topic, qos)};
         THROW_EXCEPTION(0 == result, "init return {}... ", result);
     }
 
-    publisher(dds::type::ptr const& type_ptr, string const& topic) {
-        int32_t result{init(type_ptr, topic)};
+    publisher(dds::type::ptr const& type_ptr,
+              string const& topic,
+              DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
+        int32_t result{init(type_ptr, topic, qos)};
         THROW_EXCEPTION(0 == result, "init return {}... ", result);
     }
 
     template <class T>
-    int32_t init(string const& topic) {
-        return init(T::make(), topic);
+    int32_t init(string const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
+        return init(T::make(), topic, qos);
     }
 
-    int32_t init(dds::type::ptr const& type_ptr, string const& topic) {
+    int32_t init(dds::type::ptr const& type_ptr,
+                 string const& topic,
+                 DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         int32_t result{0};
 
         do {
@@ -355,13 +363,15 @@ public:
                 break;
             }
 
-            PublisherQos qos{PUBLISHER_QOS_DEFAULT};
-            impl_ptr->participant->get_default_publisher_qos(qos);
-            impl_ptr->publisher =
-                impl_ptr->participant->create_publisher(qos, nullptr, StatusMask::none());
-            if (impl_ptr->publisher == nullptr) {
-                result = static_cast<int32_t>(error::unknown);
-                break;
+            {
+                PublisherQos qos{PUBLISHER_QOS_DEFAULT};
+                impl_ptr->participant->get_default_publisher_qos(qos);
+                impl_ptr->publisher =
+                    impl_ptr->participant->create_publisher(qos, nullptr, StatusMask::none());
+                if (impl_ptr->publisher == nullptr) {
+                    result = static_cast<int32_t>(error::unknown);
+                    break;
+                }
             }
 
             {
@@ -376,7 +386,6 @@ public:
             }
 
             {
-                DataWriterQos qos{DATAWRITER_QOS_DEFAULT};
                 impl_ptr->publisher->get_default_datawriter_qos(qos);
                 impl_ptr->writer = impl_ptr->publisher->create_datawriter(impl_ptr->topic, qos);
                 if (impl_ptr->topic == nullptr) {

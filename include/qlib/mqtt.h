@@ -13,7 +13,7 @@ using namespace ::mqtt;
 
 namespace mqtt {
 
-class action_listener final : public ::mqtt::iaction_listener {
+class action_listener : public ::mqtt::iaction_listener {
 protected:
     static inline std::map<::mqtt::token::Type, qlib::string> ops{
         {::mqtt::token::Type::CONNECT, "CONNECT"},
@@ -58,7 +58,7 @@ public:
     }
 };
 
-class callback final : public ::mqtt::callback {
+class callback : public ::mqtt::callback {
 protected:
     std::function<void(string const&, string const&)> cb{nullptr};
 
@@ -71,9 +71,11 @@ public:
     template <class Callback>
     callback(Callback&& _cb) : cb{std::forward<Callback>(_cb)} {}
 
-    void connected(string const& cause) override {}
+    void connected(string const& cause) override { qInfo("Connected! Cause={}", cause); }
 
-    void connection_lost(string const& cause) override {}
+    void connection_lost(string const& cause) override {
+        qError("Connection lost! Cause={}", cause);
+    }
 
     void message_arrived(::mqtt::const_message_ptr msg) override {
         if (cb != nullptr) {

@@ -64,6 +64,8 @@ public:
 
     using self = object<void>;
     using ptr = std::shared_ptr<self>;
+
+    struct parameter {};
 };
 
 template <class T>
@@ -77,7 +79,7 @@ static inline bool likely(bool ok) {
 #endif
 }
 
-static inline  bool unlikely(bool ok) {
+static inline bool unlikely(bool ok) {
 #ifdef __glibc_unlikely
     return __glibc_unlikely(ok);
 #else

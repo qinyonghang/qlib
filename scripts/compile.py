@@ -57,6 +57,13 @@ if __name__ == "__main__":
     if args.cmakelists_dir is None:
         args.cmakelists_dir = args.source_dir
 
+    if os.path.exists(args.install_dir):
+        print("Already compiled!")
+        exit(0)
+
+    if args.skip_install and os.path.exists(args.build_dir):
+        exit(0)
+
     print(f"Starting download for {args.url}...")
     downloader = Downloader(args.download_dir)
     ok = downloader(args.name, args.url, args.url_hash, args.source_dir)
@@ -77,7 +84,7 @@ if __name__ == "__main__":
     if args.custom_compile is not None:
         for cmd in args.custom_compile:
             os.system(cmd)
-    else:
+    elif not (os.path.exists(args.build_dir) and os.path.exists(args.install_dir)):
         build_type = args.build_type.capitalize()
         configure_command = f"cmake -S {args.cmakelists_dir} -B {args.build_dir} -DCMAKE_INSTALL_PREFIX={args.install_dir} -DCMAKE_BUILD_TYPE={build_type}"
         if args.cmake_args is not None:

@@ -1,0 +1,18 @@
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+set(INSTALL_DIR "install2/linux")
+else()
+set(INSTALL_DIR "install2/linux32")
+endif()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+set(INSTALL_DIR "install2/windows")
+else()
+set(INSTALL_DIR "install2/win32")
+endif()
+else()
+set(INSTALL_DIR "install2")
+endif()
+
+set(INSTALL_DIR ${INSTALL_DIR} CACHE STRING "Install directory")
