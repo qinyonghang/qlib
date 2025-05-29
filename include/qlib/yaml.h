@@ -4,6 +4,8 @@
 
 #include "yaml-cpp/yaml.h"
 
+#include "exception.h"
+
 namespace YAML {
 #ifdef _GLIBCXX_FILESYSTEM
 template <>
@@ -112,7 +114,11 @@ struct YAML::convert<qlib::position> {
 // #endif
 
 namespace qlib {
+
 namespace yaml {
+
+using node = YAML::Node;
+
 template <class Value>
 void set(Value* value, YAML::Node const& node, std::string_view key) {
     auto value_node = node[key];
@@ -120,5 +126,37 @@ void set(Value* value, YAML::Node const& node, std::string_view key) {
         *value = value_node.template as<Value>();
     }
 }
+
+class loader : public object {
+public:
+    static node make(string const& path) { return YAML::LoadFile(path); }
+
+#ifdef _GLIBCXX_FILESYSTEM
+    static node make(std::filesystem::path const& path) { return make(path.string()); }
+#endif
+
+    template <class T>
+    static T get(node const& node, std::string_view key) {
+        return node[key].template as<T>();
+    }
+
+    template <class T>
+    static T get(node const& node, std::string_view key, T const& default_value) {
+        auto value_node = node[key];
+        return value_node ? value_node.template as<T>() : default_value;
+    }
+
+    template <class T>
+    static void get(T* value_ptr, node const& node, std::string_view key) {
+        *value_ptr = get<T>(node, key);
+    }
+
+    template <class T>
+    static void get(T* value_ptr, node const& node, std::string_view key, T const& default_value) {
+        *value_ptr = get<T>(node, key, default_value);
+    }
+};
+
 };  // namespace yaml
+
 };  // namespace qlib

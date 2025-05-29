@@ -42,6 +42,8 @@ enum class error : int32_t {
     impl_nullptr = -2,
     param_invalid = -3,
     file_not_found = -4,
+    file_not_support = -5,
+    file_invalid = -6
 };
 
 class object {

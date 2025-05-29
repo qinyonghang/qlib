@@ -1,81 +1,54 @@
 #pragma once
 
-#include "object.h"
+#include <filesystem>
+
+#include "qlib/object.h"
 
 namespace qlib {
-template <class T>
-class config : public object {
-protected:
-    config() = default;
 
+template <class T, class Loader>
+class config : public object {
 public:
     using base = object;
-    using self = config<T>;
+    using self = config<T, Loader>;
     using ptr = std::shared_ptr<self>;
 
-// #ifdef YAML_IMPLEMENTATION
-//     template <class Value>
-//     static void set(Value* value, YAML::Node const& node, std::string_view key) {
-//         auto value_node = node[key];
-//         if (value_node) {
-//             *value = value_node.template as<Value>();
-//         }
-//     }
-// #endif
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        return std::make_shared<self>(std::forward<Args>(args)...);
+    }
 
     T& derived() { return static_cast<T&>(*this); }
-
     T const& derived() const { return static_cast<T const&>(*this); }
 
-    int32_t init(std::filesystem::path const& path) {
+    template <class Path>
+    int32_t init(Path&& path) {
         int32_t result{0};
 
         do {
             if (!std::filesystem::exists(path)) {
-                result = qlib::FILE_NOT_FOUND;
+                result = static_cast<int32_t>(error::file_not_found);
                 break;
             }
 
-            if (path.extension() == ".yaml") {
-#ifdef YAML_IMPLEMENTATION
-                result = init(YAML::LoadFile(path));
-#else
-                result = qlib::FILE_NOT_SUPPORT;
-#endif
-                if (0 != result) {
-                    break;
-                }
-            } else {
-                result = qlib::FILE_NOT_SUPPORT;
-                break;
-            }
-        } while (false);
-
-        return result;
-    }
-
-#ifdef YAML_IMPLEMENTATION
-    int32_t init(YAML::Node const& node) {
-        int32_t result{0};
-
-        do {
             try {
-                load(node);
-            } catch (YAML::Exception const& e) {
-                result = qlib::YAML_PARSE_ERROR;
-                break;
+                derived().load(Loader::make(std::forward<Path>(path)));
+            } catch (std::exception const& e) {
+                result = static_cast<int32_t>(error::file_invalid);
             }
         } while (false);
 
         return result;
     }
-#endif
 
-    template <
-        class Source,
-        class = std::enable_if_t<!std::is_same_v<std::decay_t<Source>, std::filesystem::path>>>
-    void load(Source&& source) {
-        derived().load(source);
+    template <class _T, class... Args>
+    static _T get(Args&&... args) {
+        return Loader::template get<_T>(std::forward<Args>(args)...);
+    }
+
+    template <class _T, class... Args>
+    static void get(_T* value_ptr, Args&&... args) {
+        *value_ptr = get<_T>(std::forward<Args>(args)...);
     }
 };
 

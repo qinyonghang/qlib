@@ -121,6 +121,40 @@ struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().to_string(
     }
 };
 
+template <class T>
+struct fmt::formatter<std::vector<T>> : public fmt::formatter<std::string> {
+    auto format(std::vector<T> const& vector, format_context& ctx) const {
+        std::stringstream out;
+        out << "[";
+        for (auto i = 0u; i < vector.size() - 1; ++i) {
+            out << fmt::format("{},", vector[i]);
+        }
+        if (vector.size() > 0) {
+            out << fmt::format("{}", vector.back());
+        }
+        out << "]";
+        return fmt::formatter<std::string>::format(out.str(), ctx);
+    }
+};
+
+#ifdef _GLIBCXX_ARRAY
+template <class T, size_t N>
+struct fmt::formatter<std::array<T, N>> : fmt::formatter<std::string> {
+    auto format(std::array<T, N> const& vector, format_context& ctx) const {
+        std::stringstream out;
+        out << "[";
+        for (auto i = 0u; i < vector.size() - 1; ++i) {
+            out << fmt::format("{},", vector[i]);
+        }
+        if (vector.size() > 0) {
+            out << fmt::format("{}", vector.back());
+        }
+        out << "]";
+        return fmt::formatter<std::string>::format(out.str(), ctx);
+    }
+};
+#endif
+
 // template <class T, class Char>
 // struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().string())>>
 //         : public fmt::formatter<std::string> {
