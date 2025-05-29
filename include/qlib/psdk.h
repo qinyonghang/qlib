@@ -1,5 +1,7 @@
 #pragma once
 
+#define PSDK_IMPLEMENTATION
+
 #include <functional>
 #include <vector>
 
@@ -155,10 +157,12 @@ public:
     using self = camera;
     using ptr = std::shared_ptr<self>;
 
-    struct init_parameter {};
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        return ref_singleton<self>::make(std::forward<Args>(args)...);
+    }
 
-    using frame = std::vector<uint8_t>;
-
+    struct init_parameter : public base::parameter {};
     camera(init_parameter const& parameter) {
         int32_t result{init(parameter)};
         THROW_EXCEPTION(0 == result, "init return {}... ", result);
@@ -166,13 +170,24 @@ public:
 
     int32_t init(init_parameter const& parameter);
 
-    int32_t subscribe(uint32_t index, std::function<void(frame&&)> const& callback);
-    int32_t unsubscribe(uint32_t index);
+    enum class index : uint32_t {
+        fpv,
+        h30t,
+    };
 
-    template <class... Args>
-    static ptr make(Args&&... args) {
-        return ref_singleton<self>::make(std::forward<Args>(args)...);
-    }
+    using frame = std::vector<uint8_t>;
+    int32_t subscribe(index index, std::function<void(frame&&)> const& callback);
+    int32_t unsubscribe(index index);
+
+    struct parameter : public base::parameter {
+        enum class stream : uint32_t { h264 } stream_type;
+        uint32_t width;
+        uint32_t height;
+        uint32_t fps;
+        uint32_t bitrate;
+        enum class colorspace : uint32_t { yuv420 } colorspace;
+    };
+    parameter get(index index) const;
 
 protected:
     object<void>::ptr impl_ptr;

@@ -1,16 +1,13 @@
 
-include(${ROOT_DIR}/cmake/find_thirdparty.cmake)
+include(${ROOT_DIR}/cmake/compile.cmake)
 
-execute_process(
-    COMMAND ${CMAKE_COMMAND} -E env 
-        PYTHONPATH=${ROOT_DIR}
-        ${Python3_EXECUTABLE} ${ROOT_DIR}/scripts/compile.py
-            z https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
-            --url_hash sha256:9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
-            --download_dir ${ROOT_DIR}/third_party
-            --cmake_args "\"-DZLIB_BUILD_EXAMPLES=OFF\""
-        WORKING_DIRECTORY ${ROOT_DIR}
-        COMMAND_ECHO STDOUT
+compile(z
+    "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"
+    "sha256:9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
+    ${ROOT_DIR}
+    ${ROOT_DIR}/third_party
+    "\"-DZLIB_BUILD_EXAMPLES=OFF\""
+    ""
 )
 
 if (CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
@@ -19,23 +16,20 @@ else()
 set(compile_cmd "./configure --prefix=${INSTALL_DIR} --enable-static")
 endif()
 
-execute_process(
-    COMMAND ${CMAKE_COMMAND} -E env 
-        PYTHONPATH=${ROOT_DIR}
-        ${Python3_EXECUTABLE} ${ROOT_DIR}/scripts/compile.py
-            x264 https://github.com/mirror/x264/archive/refs/heads/master.zip
-            --download_dir ${ROOT_DIR}/third_party
-            --custom_compile
-                "chmod a+x ./configure"
-                "chmod a+x ./config.sub"
-                "chmod a+x ./config.guess"
-                "chmod a+x ./tools/cltostr.sh"
-                "chmod a+x ./version.sh"
-                "${compile_cmd}"
-                "make -j10"
-                "make install"
-        WORKING_DIRECTORY ${ROOT_DIR}
-        COMMAND_ECHO STDOUT
+compile(x264
+    "https://github.com/mirror/x264/archive/refs/heads/master.zip"
+    ""
+    ${ROOT_DIR}
+    ${ROOT_DIR}/third_party
+    ""
+    "chmod a+x ./configure;
+     chmod a+x ./config.sub;
+     chmod a+x ./config.guess;
+     chmod a+x ./tools/cltostr.sh;
+     chmod a+x ./version.sh;
+     ${compile_cmd};
+     make -j10;
+     make install"
 )
 
 # https://github.com/ImageMagick/lzma.git
@@ -46,19 +40,15 @@ else()
 set(compile_cmd "./configure --prefix=${INSTALL_DIR} --disable-shared --enable-static --enable-libx264 --enable-gpl --extra-ldflags=\"-L ../x264/install2/linux/lib\" --extra-cflags=\"-I ../x264/install2/linux/include\"")
 endif()
 
-execute_process(
-    COMMAND ${CMAKE_COMMAND} -E env 
-        PYTHONPATH=${ROOT_DIR}
-        ${Python3_EXECUTABLE} ${ROOT_DIR}/scripts/compile.py
-            ffmpeg https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n4.4.6.tar.gz
-            --url_hash "sha256:9cdeaab9ddc0c0ddb63bad319adc977eba8ac946b15d5b4d9635222d8ba27a8b"
-            --download_dir ${ROOT_DIR}/third_party
-            --custom_compile
-                "${compile_cmd}"
-                "make -j10"
-                "make install"
-        WORKING_DIRECTORY ${ROOT_DIR}
-        COMMAND_ECHO STDOUT
+compile(ffmpeg
+    "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n4.4.6.tar.gz"
+    "sha256:9cdeaab9ddc0c0ddb63bad319adc977eba8ac946b15d5b4d9635222d8ba27a8b"
+    ${ROOT_DIR}
+    ${ROOT_DIR}/third_party
+    ""
+    "${compile_cmd};
+     make -j10;
+     make install"
 )
 
 add_library(qlib_ffmpeg STATIC ${ROOT_DIR}/src/ffmpeg.cpp)

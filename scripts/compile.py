@@ -82,8 +82,11 @@ if __name__ == "__main__":
             os.system(cmd)
 
     if args.custom_compile is not None:
-        for cmd in args.custom_compile:
-            os.system(cmd)
+        for cmds in args.custom_compile:
+            cmds = cmds.split(";")
+            for cmd in cmds:
+                print(f"Command: {cmd}")
+                os.system(cmd)
     elif not (os.path.exists(args.build_dir) and os.path.exists(args.install_dir)):
         build_type = args.build_type.capitalize()
         configure_command = f"cmake -S {args.cmakelists_dir} -B {args.build_dir} -DCMAKE_INSTALL_PREFIX={args.install_dir} -DCMAKE_BUILD_TYPE={build_type}"

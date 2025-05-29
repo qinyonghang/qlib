@@ -1804,10 +1804,12 @@ int32_t flight_control::set_action(action action,
 }
 
 namespace __camera__ {
-std::map<uint32_t, uint32_t> map{{0u, DJI_LIVEVIEW_CAMERA_POSITION_FPV}};
-
 struct impl final : public qlib::object<void> {
     using self = camera;
+
+    static inline std::map<self::index, uint32_t> map{
+        {self::index::fpv, DJI_LIVEVIEW_CAMERA_POSITION_FPV},
+        {self::index::h30t, DJI_LIVEVIEW_CAMERA_POSITION_NO_1}};
 
     class register2 : public qlib::object<register2> {
     protected:
@@ -1914,7 +1916,7 @@ int32_t camera::init(init_parameter const& parameter) {
     return result;
 }
 
-int32_t camera::subscribe(uint32_t index, std::function<void(frame&&)> const& callback) {
+int32_t camera::subscribe(index index, std::function<void(frame&&)> const& callback) {
     int32_t result{0};
 
     do {
@@ -1926,8 +1928,8 @@ int32_t camera::subscribe(uint32_t index, std::function<void(frame&&)> const& ca
             break;
         }
 
-        auto it = map.find(index);
-        if (it == map.end()) {
+        auto it = impl::map.find(index);
+        if (it == impl::map.end()) {
             qError("index is invalid!");
             result = qlib::PARAM_INVALID;
             break;
@@ -1959,7 +1961,7 @@ int32_t camera::subscribe(uint32_t index, std::function<void(frame&&)> const& ca
     return result;
 }
 
-int32_t camera::unsubscribe(uint32_t index) {
+int32_t camera::unsubscribe(index index) {
     int32_t result{0};
 
     do {
@@ -1971,8 +1973,8 @@ int32_t camera::unsubscribe(uint32_t index) {
             break;
         }
 
-        auto it = map.find(index);
-        if (it == map.end()) {
+        auto it = impl::map.find(index);
+        if (it == impl::map.end()) {
             qError("index is invalid!");
             result = qlib::PARAM_INVALID;
             break;
@@ -1992,6 +1994,37 @@ int32_t camera::unsubscribe(uint32_t index) {
     } while (false);
 
     return result;
+}
+
+camera::parameter camera::get(index index) const {
+    static std::map<self::index, self::parameter> parameters{
+        {self::index::fpv,
+         self::parameter{
+             .stream_type = self::parameter::stream::h264,
+             .width = 1920u,
+             .height = 1080u,
+             .fps = 30u,
+             .bitrate = 16 * 1000 * 1000u,
+             .colorspace = self::parameter::colorspace::yuv420,
+         }},
+        {self::index::h30t,
+         self::parameter{
+             .stream_type = self::parameter::stream::h264,
+             .width = 1440u,
+             .height = 1080u,
+             .fps = 30u,
+             .bitrate = 16 * 1000 * 1000u,
+             .colorspace = self::parameter::colorspace::yuv420,
+         }}};
+
+    camera::parameter parameter;
+
+    auto it = parameters.find(index);
+    if (it != parameters.end()) {
+        parameter = it->second;
+    }
+
+    return parameter;
 }
 
 namespace __ir_camera__ {
