@@ -37,11 +37,11 @@ auto register2 = []() {
 class publisher;
 class subscriber;
 
-class type : public object<type> {
+class type : public object {
 public:
     using self = type;
     using ptr = std::shared_ptr<self>;
-    using base = qlib::object<self>;
+    using base = object;
 
 protected:
     type(DynamicType::_ref_type type) {
@@ -298,11 +298,11 @@ REGISTER_TYPE(float64, TK_FLOAT64)
 
 #undef REGISTER_TYPE
 
-class publisher : public object<publisher> {
+class publisher : public object {
 public:
     using self = publisher;
     using ptr = std::shared_ptr<self>;
-    using base = qlib::object<self>;
+    using base = object;
 
     static ptr make(dds::type::ptr const& type_ptr,
                     string const& topic,
@@ -479,9 +479,9 @@ REGISTER_TYPE(float32)
 REGISTER_TYPE(float64)
 #undef REGISTER_TYPE
 
-class subscriber : public object<subscriber> {
+class subscriber : public object {
 public:
-    using base = qlib::object<subscriber>;
+    using base = object;
     using self = subscriber;
     using ptr = std::shared_ptr<self>;
 

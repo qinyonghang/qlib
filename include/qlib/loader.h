@@ -8,20 +8,20 @@
 namespace qlib {
 
 template <typename T = string>
-class loader final : public object<loader<T>> {
+class loader final : public object {
 public:
-    using base = object<loader<T>>;
+    using base = object;
     using self = loader<T>;
     using ptr = std::shared_ptr<self>;
 
 protected:
-    struct impl : public object<void> {
+    struct impl : public object {
         using self = impl;
         using ptr = std::shared_ptr<self>;
         std::vector<T> data;
     };
 
-    object<void>::ptr impl_ptr;
+    object::ptr impl_ptr;
 
 public:
     int32_t init(char const* path) {
@@ -89,7 +89,7 @@ public:
 };
 
 template <>
-struct loader<std::string>::impl : public object<void> {
+struct loader<std::string>::impl : public object {
     using self = impl;
     using ptr = std::shared_ptr<self>;
     std::string data;

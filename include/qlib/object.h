@@ -44,7 +44,6 @@ enum class error : int32_t {
     file_not_found = -4,
 };
 
-template <typename T>
 class object {
 protected:
     object() = default;
@@ -62,14 +61,11 @@ public:
     using float32_t = qlib::float32_t;
     using float64_t = qlib::float64_t;
 
-    using self = object<void>;
-    using ptr = std::shared_ptr<self>;
-
     struct parameter {};
-};
 
-template <class T>
-using object_ptr = typename object<T>::ptr;
+    using self = object;
+    using ptr = std::shared_ptr<self>;
+};
 
 static inline bool likely(bool ok) {
 #ifdef __glibc_likely

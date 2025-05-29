@@ -58,7 +58,7 @@ typedef struct {
     T_DjiHalUsbBulkInfo usbBulkInfo;
 } T_HalUsbBulkObj;
 
-class register2 final : public qlib::object<void> {
+class register2 final : public object {
 public:
     using self = register2;
     using ptr = std::shared_ptr<self>;
@@ -1360,21 +1360,21 @@ public:
     }
 
 protected:
-    friend class qlib::ref_singleton<self>;
+    friend class ref_singleton<self>;
 };
 
 };  // namespace
 
-qlib::object<void>::ptr make(init_parameter const& parameter) {
-    return qlib::ref_singleton<register2>::make(parameter);
+object::ptr make(init_parameter const& parameter) {
+    return ref_singleton<register2>::make(parameter);
 }
 
 namespace __flight_control__ {
 
-struct impl : public qlib::object<void> {
+struct impl : public object {
     using self = flight_control;
 
-    class register2 final : public qlib::object<register2> {
+    class register2 final : public object {
     public:
         using self = register2;
         using ptr = std::shared_ptr<self>;
@@ -1412,7 +1412,7 @@ struct impl : public qlib::object<void> {
         }
 
     protected:
-        friend class qlib::ref_singleton<self>;
+        friend class ref_singleton<self>;
     };
 
     psdk::register2::ptr psdk_register_ptr;
@@ -1676,8 +1676,8 @@ int32_t flight_control::init(init_parameter const& parameter) {
         using namespace __flight_control__;
         auto impl_ptr = std::make_shared<impl>();
 
-        impl_ptr->psdk_register_ptr = qlib::ref_singleton<psdk::register2>::make();
-        impl_ptr->register_ptr = qlib::ref_singleton<impl::register2>::make();
+        impl_ptr->psdk_register_ptr = ref_singleton<psdk::register2>::make();
+        impl_ptr->register_ptr = ref_singleton<impl::register2>::make();
 
         result = DjiFlightController_SetRCLostAction(DJI_FLIGHT_CONTROLLER_RC_LOST_ACTION_GOHOME);
         if (0 != result) {
@@ -1701,9 +1701,9 @@ int32_t flight_control::init(init_parameter const& parameter) {
                        "state: {}, "
                        "velocity: {}m/s",
                        state.curWaypointIndex, state.state,
-                       static_cast<qlib::float32_t>(state.velocity) / 100.0f);
+                       static_cast<float32_t>(state.velocity) / 100.0f);
                 if (state.state == DJI_WAYPOINT_V2_MISSION_STATE_EXIT_MISSION) {
-                    auto ref = qlib::ref_singleton<self>::make();
+                    auto ref = ref_singleton<self>::make();
                     auto impl_ptr = std::static_pointer_cast<impl>(ref->impl_ptr);
                     if (impl_ptr != nullptr) {
                         impl_ptr->promise.set_value();
@@ -1804,16 +1804,16 @@ int32_t flight_control::set_action(action action,
 }
 
 namespace __camera__ {
-struct impl final : public qlib::object<void> {
+struct impl final : public object {
     using self = camera;
 
     static inline std::map<self::index, uint32_t> map{
         {self::index::fpv, DJI_LIVEVIEW_CAMERA_POSITION_FPV},
         {self::index::h30t, DJI_LIVEVIEW_CAMERA_POSITION_NO_1}};
 
-    class register2 : public qlib::object<register2> {
+    class register2 : public object {
     protected:
-        friend class qlib::ref_singleton<register2>;
+        friend class ref_singleton<register2>;
 
     public:
         using self = register2;
@@ -1863,7 +1863,7 @@ int32_t camera::init(init_parameter const& parameter) {
         using namespace __camera__;
         auto impl_ptr = std::make_shared<impl>();
 
-        impl_ptr->register_ptr = qlib::ref_singleton<impl::register2>::make();
+        impl_ptr->register_ptr = ref_singleton<impl::register2>::make();
         impl_ptr->init_parameter = parameter;
         impl_ptr->future = std::async(
             std::launch::async,
@@ -1924,14 +1924,14 @@ int32_t camera::subscribe(index index, std::function<void(frame&&)> const& callb
         auto impl_ptr = std::static_pointer_cast<impl>(self::impl_ptr);
         if (nullptr == impl_ptr) {
             qError("impl_ptr is nullptr!");
-            result = qlib::IMPL_NULLPTR;
+            result = IMPL_NULLPTR;
             break;
         }
 
         auto it = impl::map.find(index);
         if (it == impl::map.end()) {
             qError("index is invalid!");
-            result = qlib::PARAM_INVALID;
+            result = PARAM_INVALID;
             break;
         }
 
@@ -1942,7 +1942,7 @@ int32_t camera::subscribe(index index, std::function<void(frame&&)> const& callb
             static_cast<E_DjiLiveViewCameraPosition>(it->second),
             DJI_LIVEVIEW_CAMERA_SOURCE_DEFAULT,
             +[](E_DjiLiveViewCameraPosition position, const uint8_t* buf, uint32_t len) {
-                auto camera_ptr = qlib::ref_singleton<self>::make();
+                auto camera_ptr = ref_singleton<self>::make();
                 auto impl_ptr = std::static_pointer_cast<impl>(camera_ptr->impl_ptr);
                 if (impl_ptr != nullptr && buf != nullptr) {
                     auto frame_ptr = std::make_shared<std::vector<uint8_t>>(buf, buf + len);
@@ -1953,7 +1953,7 @@ int32_t camera::subscribe(index index, std::function<void(frame&&)> const& callb
             });
         if (0 != result) {
             qError("DjiLiveview_StartH264Stream return {:#x}!", result);
-            result = qlib::UNKNOWN_ERROR;
+            result = UNKNOWN_ERROR;
             break;
         }
     } while (false);
@@ -1969,14 +1969,14 @@ int32_t camera::unsubscribe(index index) {
         auto impl_ptr = std::static_pointer_cast<impl>(self::impl_ptr);
         if (nullptr == impl_ptr) {
             qError("impl_ptr is nullptr!");
-            result = qlib::IMPL_NULLPTR;
+            result = IMPL_NULLPTR;
             break;
         }
 
         auto it = impl::map.find(index);
         if (it == impl::map.end()) {
             qError("index is invalid!");
-            result = qlib::PARAM_INVALID;
+            result = PARAM_INVALID;
             break;
         }
 
@@ -2028,8 +2028,8 @@ camera::parameter camera::get(index index) const {
 }
 
 namespace __ir_camera__ {
-struct impl final : public qlib::object<void> {
-    using base = qlib::object<void>;
+struct impl final : public object {
+    using base = object;
     using self = ir_camera;
     using ptr = std::shared_ptr<self>;
 
@@ -2042,9 +2042,9 @@ struct impl final : public qlib::object<void> {
         {self::direction::back, DJI_PERCEPTION_RECTIFY_REAR},
     };
 
-    class register2 : public qlib::object<register2> {
+    class register2 : public object {
     public:
-        using base = qlib::object<register2>;
+        using base = object;
         using self = register2;
         using ptr = std::shared_ptr<self>;
 
@@ -2064,7 +2064,7 @@ struct impl final : public qlib::object<void> {
         }
 
     protected:
-        friend class qlib::ref_singleton<self>;
+        friend class ref_singleton<self>;
     };
 
     self::init_parameter init_parameter;
@@ -2092,7 +2092,7 @@ int32_t ir_camera::init(init_parameter const& parameter) {
         using namespace __ir_camera__;
         auto impl_ptr = std::make_shared<impl>();
 
-        impl_ptr->register_ptr = qlib::ref_singleton<impl::register2>::make();
+        impl_ptr->register_ptr = ref_singleton<impl::register2>::make();
         impl_ptr->init_parameter = parameter;
         impl_ptr->future = std::async(
             std::launch::async,
@@ -2153,14 +2153,14 @@ int32_t ir_camera::subscribe(self::direction direction,
         auto impl_ptr = std::static_pointer_cast<impl>(self::impl_ptr);
         if (nullptr == impl_ptr) {
             qTrace("impl_ptr is null!");
-            result = qlib::IMPL_NULLPTR;
+            result = IMPL_NULLPTR;
             break;
         }
 
         auto it = impl::map.find(direction);
         if (it == impl::map.end()) {
             qError("direction is invalid!");
-            result = qlib::PARAM_INVALID;
+            result = PARAM_INVALID;
             break;
         }
 
@@ -2168,7 +2168,7 @@ int32_t ir_camera::subscribe(self::direction direction,
         impl_ptr->callbacks[it->second] = std::make_tuple(callback, std::queue<self::frame>{});
         result = DjiPerception_SubscribePerceptionImage(
             it->second, +[](T_DjiPerceptionImageInfo info, uint8_t* buf, uint32_t len) {
-                auto camera_ptr = qlib::ref_singleton<self>::make();
+                auto camera_ptr = ref_singleton<self>::make();
                 auto impl_ptr = std::static_pointer_cast<impl>(camera_ptr->impl_ptr);
                 if (impl_ptr != nullptr && buf != nullptr) {
                     std::vector<uint8_t> data(len);
@@ -2183,7 +2183,7 @@ int32_t ir_camera::subscribe(self::direction direction,
             });
         if (0 != result) {
             qError("DjiPerception_SubscribePerceptionImage return {:#x}!", result);
-            result = qlib::UNKNOWN_ERROR;
+            result = UNKNOWN_ERROR;
             break;
         }
     } while (false);
@@ -2199,14 +2199,14 @@ int32_t ir_camera::unsubscribe(self::direction direction) {
         auto impl_ptr = std::static_pointer_cast<impl>(self::impl_ptr);
         if (nullptr == impl_ptr) {
             qTrace("impl_ptr is null!");
-            result = qlib::IMPL_NULLPTR;
+            result = IMPL_NULLPTR;
             break;
         }
 
         auto it = impl::map.find(direction);
         if (it == impl::map.end()) {
             qError("direction is invalid!");
-            result = qlib::PARAM_INVALID;
+            result = PARAM_INVALID;
             break;
         }
 

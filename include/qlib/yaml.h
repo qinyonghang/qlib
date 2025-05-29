@@ -110,3 +110,15 @@ struct YAML::convert<qlib::position> {
 
 // };  // namespace YAML
 // #endif
+
+namespace qlib {
+namespace yaml {
+template <class Value>
+void set(Value* value, YAML::Node const& node, std::string_view key) {
+    auto value_node = node[key];
+    if (value_node) {
+        *value = value_node.template as<Value>();
+    }
+}
+};  // namespace yaml
+};  // namespace qlib

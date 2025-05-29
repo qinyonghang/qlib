@@ -9,8 +9,12 @@
 
 namespace qlib {
 template <class T>
-class ref_singleton final : public qlib::object<ref_singleton<T>> {
+class ref_singleton final : public object {
 public:
+    using base = object;
+    using self = ref_singleton<T>;
+    using ptr = std::shared_ptr<self>;
+
     template <class... Args>
     static std::shared_ptr<T> make(Args&&... args) {
         if constexpr ((sizeof...(Args) != 0) || (std::is_default_constructible_v<T>)) {

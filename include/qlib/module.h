@@ -6,9 +6,9 @@
 namespace qlib {
 
 template <class T>
-class module : public qlib::object<module<T>> {
+class module : public object {
 public:
-    using base = qlib::object<module<T>>;
+    using base = object;
     using self = module<T>;
     using ptr = std::shared_ptr<self>;
 

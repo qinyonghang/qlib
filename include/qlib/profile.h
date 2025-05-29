@@ -6,6 +6,7 @@
 #include "object.h"
 
 namespace qlib {
+
 class profile final {
 public:
     using time_point = std::chrono::steady_clock::time_point;

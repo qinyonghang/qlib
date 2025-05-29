@@ -63,11 +63,11 @@ struct init_parameter {
     }
 };
 
-qlib::object<void>::ptr make(init_parameter const&);
+object::ptr make(init_parameter const&);
 
-class flight_control final : public qlib::object<flight_control> {
+class flight_control final : public object {
 public:
-    using base = qlib::object<flight_control>;
+    using base = object;
     using self = flight_control;
     using ptr = std::shared_ptr<self>;
 
@@ -146,14 +146,14 @@ public:
     }
 
 protected:
-    qlib::object<void>::ptr impl_ptr;
+    object::ptr impl_ptr;
 
-    friend class qlib::ref_singleton<self>;
+    friend class ref_singleton<self>;
 };
 
-class camera final : public object<camera> {
+class camera final : public object {
 public:
-    using base = object<camera>;
+    using base = object;
     using self = camera;
     using ptr = std::shared_ptr<self>;
 
@@ -190,14 +190,14 @@ public:
     parameter get(index index) const;
 
 protected:
-    object<void>::ptr impl_ptr;
+    object::ptr impl_ptr;
 
     friend class ref_singleton<self>;
 };
 
-class ir_camera final : public object<ir_camera> {
+class ir_camera final : public object {
 public:
-    using base = object<ir_camera>;
+    using base = object;
     using self = ir_camera;
     using ptr = std::shared_ptr<self>;
 
@@ -234,7 +234,7 @@ public:
     }
 
 protected:
-    qlib::object<void>::ptr impl_ptr;
+    object::ptr impl_ptr;
 
     friend class ref_singleton<self>;
 };

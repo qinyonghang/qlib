@@ -151,11 +151,11 @@ namespace logger {
 using namespace spdlog;
 using level = spdlog::level::level_enum;
 
-class factory final : public object<factory> {
+class factory final : public object {
 public:
     using self = factory;
     using ptr = std::shared_ptr<self>;
-    using base = object<self>;
+    using base = object;
 
     factory() = default;
 
@@ -209,7 +209,7 @@ protected:
     level _file_level;
 };
 
-class register2 final {
+class register2 final : public object {
 public:
     static auto build(std::string const& name,
                       bool console = true,

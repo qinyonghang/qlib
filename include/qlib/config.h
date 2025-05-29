@@ -4,24 +4,24 @@
 
 namespace qlib {
 template <class T>
-class config : public qlib::object<config<T>> {
+class config : public object {
 protected:
     config() = default;
 
 public:
-    using base = qlib::object<config<T>>;
+    using base = object;
     using self = config<T>;
     using ptr = std::shared_ptr<self>;
 
-#ifdef YAML_IMPLEMENTATION
-    template <class Value>
-    static void set(Value* value, YAML::Node const& node, std::string_view key) {
-        auto value_node = node[key];
-        if (value_node) {
-            *value = value_node.template as<Value>();
-        }
-    }
-#endif
+// #ifdef YAML_IMPLEMENTATION
+//     template <class Value>
+//     static void set(Value* value, YAML::Node const& node, std::string_view key) {
+//         auto value_node = node[key];
+//         if (value_node) {
+//             *value = value_node.template as<Value>();
+//         }
+//     }
+// #endif
 
     T& derived() { return static_cast<T&>(*this); }
 
