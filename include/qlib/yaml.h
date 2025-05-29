@@ -136,14 +136,19 @@ public:
 #endif
 
     template <class T>
+    static T get(node const& node) {
+        return node.template as<T>();
+    }
+
+    template <class T>
     static T get(node const& node, std::string_view key) {
-        return node[key].template as<T>();
+        return get<T>(node[key]);
     }
 
     template <class T>
     static T get(node const& node, std::string_view key, T const& default_value) {
         auto value_node = node[key];
-        return value_node ? value_node.template as<T>() : default_value;
+        return value_node ? get<T>(value_node) : default_value;
     }
 
     template <class T>
