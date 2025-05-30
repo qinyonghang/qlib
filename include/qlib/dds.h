@@ -279,20 +279,20 @@ public:
     using base = object;
 
     static ptr make(dds::type::ptr const& type_ptr,
-                    string const& topic,
+                    base::string const& topic,
                     DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         return std::make_shared<self>(type_ptr, topic, qos);
     }
 
     template <class T>
-    static ptr make(string const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
+    static ptr make(base::string const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         return std::make_shared<self>(topic, qos, std::in_place_type<T>);
     }
 
     publisher() = default;
 
     template <class T>
-    publisher(string const& topic,
+    publisher(base::string const& topic,
               DataWriterQos qos = DATAWRITER_QOS_DEFAULT,
               std::in_place_type_t<T> const& = std::in_place_type<T>) {
         int32_t result{init<T>(topic, qos)};
@@ -300,19 +300,19 @@ public:
     }
 
     publisher(dds::type::ptr const& type_ptr,
-              string const& topic,
+              base::string const& topic,
               DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         int32_t result{init(type_ptr, topic, qos)};
         THROW_EXCEPTION(0 == result, "init return {}... ", result);
     }
 
     template <class T>
-    int32_t init(string const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
+    int32_t init(base::string const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         return init(T::make(), topic, qos);
     }
 
     int32_t init(dds::type::ptr const& type_ptr,
-                 string const& topic,
+                 base::string const& topic,
                  DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         int32_t result{0};
 
@@ -413,46 +413,6 @@ protected:
     std::shared_ptr<impl> impl_ptr;
 };
 
-template <>
-int32_t publisher::publish<qlib::string>(qlib::string const& value) {
-    return publish(dds::string::make(value));
-}
-
-#define REGISTER_TYPE(T)                                                                           \
-    template <>                                                                                    \
-    int32_t publisher::publish<T##_t>(T##_t const& value) {                                        \
-        return publish(dds::T::make(value));                                                       \
-    }
-REGISTER_TYPE(int8)
-REGISTER_TYPE(uint8)
-REGISTER_TYPE(int16)
-REGISTER_TYPE(uint16)
-REGISTER_TYPE(int32)
-REGISTER_TYPE(uint32)
-REGISTER_TYPE(int64)
-REGISTER_TYPE(uint64)
-REGISTER_TYPE(float32)
-REGISTER_TYPE(float64)
-#undef REGISTER_TYPE
-
-#define REGISTER_TYPE(T)                                                                           \
-    template <>                                                                                    \
-    int32_t publisher::publish<std::vector<T##_t>>(std::vector<T##_t> const& value) {              \
-        return publish(dds::sequence<T##_t>::make(value));                                         \
-    }
-
-REGISTER_TYPE(int8)
-REGISTER_TYPE(uint8)
-REGISTER_TYPE(int16)
-REGISTER_TYPE(uint16)
-REGISTER_TYPE(int32)
-REGISTER_TYPE(uint32)
-REGISTER_TYPE(int64)
-REGISTER_TYPE(uint64)
-REGISTER_TYPE(float32)
-REGISTER_TYPE(float64)
-#undef REGISTER_TYPE
-
 class subscriber : public object {
 public:
     using base = object;
@@ -460,21 +420,36 @@ public:
     using ptr = std::shared_ptr<self>;
 
     static ptr make(dds::type::ptr const& type_ptr,
-                    string const& topic,
+                    base::string const& topic,
                     std::function<void(type::ptr const&)> const& callback) {
         return std::make_shared<self>(type_ptr, topic, callback);
     }
 
-    template <class T>
-    static ptr make(string const& topic,
+    template <class T,
+              class = std::enable_if_t<!std::is_convertible_v<std::decay_t<T>, dds::type::ptr>>>
+    static ptr make(base::string const& topic, std::function<void(T&&)> const& callback) {
+        return std::make_shared<self>(topic, callback, std::in_place_type<T>);
+    }
+
+    template <class T, class = std::void_t<typename T::ptr>>
+    static ptr make(base::string const& topic,
                     std::function<void(typename T::ptr const&)> const& callback) {
         return std::make_shared<self>(topic, callback, std::in_place_type<T>);
     }
 
     explicit subscriber() = default;
 
-    template <class T>
-    explicit subscriber(string const& topic,
+    template <class T,
+              class = std::enable_if_t<!std::is_convertible_v<std::decay_t<T>, dds::type::ptr>>>
+    explicit subscriber(base::string const& topic,
+                        std::function<void(T&&)> const& callback,
+                        std::in_place_type_t<T> const& = std::in_place_type<T>) {
+        int32_t result{init<T>(topic, callback)};
+        THROW_EXCEPTION(0 == result, "init return {}... ", result);
+    }
+
+    template <class T, class = std::void_t<typename T::ptr>>
+    explicit subscriber(base::string const& topic,
                         std::function<void(typename T::ptr const&)> const& callback,
                         std::in_place_type_t<T> const& = std::in_place_type<T>) {
         int32_t result{init<T>(topic, callback)};
@@ -482,21 +457,26 @@ public:
     }
 
     subscriber(type::ptr const& type_ptr,
-               string const& topic,
+               base::string const& topic,
                std::function<void(type::ptr const&)> const& callback) {
         int32_t result{init(type_ptr, topic, callback)};
         THROW_EXCEPTION(0 == result, "init return {}... ", result);
     }
 
-    template <class T>
-    int32_t init(string const& topic, std::function<void(typename T::ptr const&)> const& callback) {
+    template <class T,
+              class = std::enable_if_t<!std::is_convertible_v<std::decay_t<T>, dds::type::ptr>>>
+    int32_t init(base::string const& topic, std::function<void(T&&)> const& callback);
+
+    template <class T, class = std::void_t<typename T::ptr>>
+    int32_t init(base::string const& topic,
+                 std::function<void(typename T::ptr const&)> const& callback) {
         return init(T::make(), topic, [callback](type::ptr const& type_ptr) {
             callback(std::static_pointer_cast<T>(type_ptr));
         });
     }
 
     int32_t init(type::ptr const& type_ptr,
-                 string const& topic,
+                 base::string const& topic,
                  std::function<void(type::ptr const&)> const& callback) {
         int32_t result{0};
 
@@ -596,6 +576,65 @@ protected:
 
     std::shared_ptr<impl> impl_ptr;
 };
+
+template <>
+int32_t publisher::publish<publisher::base::string>(publisher::base::string const& value) {
+    return publish(dds::string::make(value));
+}
+
+template <>
+int32_t subscriber::init<subscriber::base::string>(
+    base::string const& topic, std::function<void(base::string&&)> const& callback) {
+    return init(dds::string::make(), topic, [callback](type::ptr const& type_ptr) {
+        auto value_ptr = std::dynamic_pointer_cast<dds::string>(type_ptr);
+        THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*value_ptr).name());
+        auto value = static_cast<base::string>(*value_ptr);
+        callback(std::move(value));
+    });
+}
+
+#define REGISTER_TYPE(T)                                                                           \
+    template <>                                                                                    \
+    int32_t publisher::publish<T##_t>(T##_t const& value) {                                        \
+        return publish(dds::T::make(value));                                                       \
+    }                                                                                              \
+    template <>                                                                                    \
+    int32_t publisher::publish<std::vector<T##_t>>(std::vector<T##_t> const& value) {              \
+        return publish(dds::sequence<T##_t>::make(value));                                         \
+    }                                                                                              \
+    template <>                                                                                    \
+    int32_t subscriber::init<T##_t>(base::string const& topic,                                     \
+                                    std::function<void(T##_t&&)> const& callback) {                \
+        return init(dds::T::make(), topic, [callback](type::ptr const& type_ptr) {                 \
+            auto value_ptr = std::dynamic_pointer_cast<dds::T>(type_ptr);                          \
+            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*value_ptr).name());                        \
+            auto value = static_cast<T##_t>(*value_ptr);                                           \
+            callback(std::move(value));                                                            \
+        });                                                                                        \
+    }                                                                                              \
+    template <>                                                                                    \
+    int32_t subscriber::init<std::vector<T##_t>>(                                                  \
+        base::string const& topic, std::function<void(std::vector<T##_t>&&)> const& callback) {    \
+        return init(dds::sequence<T##_t>::make(), topic, [callback](type::ptr const& type_ptr) {   \
+            auto value_ptr = std::dynamic_pointer_cast<dds::sequence<T##_t>>(type_ptr);            \
+            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*value_ptr).name());                        \
+            auto value = static_cast<std::vector<T##_t>>(*value_ptr);                              \
+            callback(std::move(value));                                                            \
+        });                                                                                        \
+    }
+
+REGISTER_TYPE(int8)
+REGISTER_TYPE(uint8)
+REGISTER_TYPE(int16)
+REGISTER_TYPE(uint16)
+REGISTER_TYPE(int32)
+REGISTER_TYPE(uint32)
+REGISTER_TYPE(int64)
+REGISTER_TYPE(uint64)
+REGISTER_TYPE(float32)
+REGISTER_TYPE(float64)
+
+#undef REGISTER_TYPE
 
 };  // namespace dds
 };  // namespace qlib

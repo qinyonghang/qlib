@@ -1697,11 +1697,6 @@ int32_t flight_control::init(init_parameter const& parameter) {
 
         result = DjiWaypointV2_RegisterMissionStateCallback(
             +[](T_DjiWaypointV2MissionStatePush state) -> T_DjiReturnCode {
-                qTrace("DjiWaypointV2_RegisterMissionStateCallback: index: {}, "
-                       "state: {}, "
-                       "velocity: {}m/s",
-                       state.curWaypointIndex, state.state,
-                       static_cast<float32_t>(state.velocity) / 100.0f);
                 if (state.state == DJI_WAYPOINT_V2_MISSION_STATE_EXIT_MISSION) {
                     auto ref = ref_singleton<self>::make();
                     auto impl_ptr = std::static_pointer_cast<impl>(ref->impl_ptr);
