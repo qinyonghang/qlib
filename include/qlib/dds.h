@@ -43,7 +43,11 @@ public:
     using ptr = std::shared_ptr<self>;
     using base = object;
 
+    virtual ~type() = default;
+
 protected:
+    type() = default;
+
     type(DynamicType::_ref_type type) {
         THROW_EXCEPTION(type, "type is nullptr...");
         self::_type = type;
@@ -61,8 +65,8 @@ protected:
     friend class subscriber;
 
 protected:
-    DynamicType::_ref_type _type;
-    DynamicData::_ref_type _data;
+    DynamicType::_ref_type _type{nullptr};
+    DynamicData::_ref_type _data{nullptr};
 
     DynamicType::_ref_type make_type() { return self::_type; }
     DynamicData::_ref_type make_data_ptr() { return self::_data; }
@@ -98,6 +102,16 @@ protected:
     template <>                                                                                    \
     DynamicType::_ref_type type::make<T##_t>(DynamicTypeBuilderFactory::_ref_type type_factory) {  \
         return type_factory->get_primitive_type(TK_TYPE);                                          \
+    }                                                                                              \
+    template <>                                                                                    \
+    std::vector<T##_t> type::get<std::vector<T##_t>>() const {                                     \
+        std::vector<T##_t> value;                                                                  \
+        self::_data->get_##T##_values(value, 0u);                                                  \
+        return value;                                                                              \
+    }                                                                                              \
+    template <>                                                                                    \
+    void type::set<std::vector<T##_t>>(std::vector<T##_t> const& value) {                          \
+        self::_data->set_##T##_values(0u, value);                                                  \
     }
 
 REGISTER_TYPE(int8, TK_INT8)
@@ -110,46 +124,6 @@ REGISTER_TYPE(int64, TK_INT64)
 REGISTER_TYPE(uint64, TK_UINT64)
 REGISTER_TYPE(float32, TK_FLOAT32)
 REGISTER_TYPE(float64, TK_FLOAT64)
-
-#undef REGISTER_TYPE
-
-#define REGISTER_TYPE(T)                                                                           \
-    template <>                                                                                    \
-    std::vector<T##_t> type::get<std::vector<T##_t>>() const {                                     \
-        std::vector<T##_t> value;                                                                  \
-        self::_data->get_##T##_values(value, 0u);                                                  \
-        return value;                                                                              \
-    }
-
-REGISTER_TYPE(int8)
-REGISTER_TYPE(uint8)
-REGISTER_TYPE(int16)
-REGISTER_TYPE(uint16)
-REGISTER_TYPE(int32)
-REGISTER_TYPE(uint32)
-REGISTER_TYPE(int64)
-REGISTER_TYPE(uint64)
-REGISTER_TYPE(float32)
-REGISTER_TYPE(float64)
-
-#undef REGISTER_TYPE
-
-#define REGISTER_TYPE(T)                                                                           \
-    template <>                                                                                    \
-    void type::set<std::vector<T##_t>>(std::vector<T##_t> const& value) {                          \
-        self::_data->set_##T##_values(0u, value);                                                  \
-    }
-
-REGISTER_TYPE(int8)
-REGISTER_TYPE(uint8)
-REGISTER_TYPE(int16)
-REGISTER_TYPE(uint16)
-REGISTER_TYPE(int32)
-REGISTER_TYPE(uint32)
-REGISTER_TYPE(int64)
-REGISTER_TYPE(uint64)
-REGISTER_TYPE(float32)
-REGISTER_TYPE(float64)
 
 #undef REGISTER_TYPE
 

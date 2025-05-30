@@ -85,7 +85,7 @@ target_compile_options(qlib_python PRIVATE
 endif ()
 
 target_include_directories(qlib_python PRIVATE ${Python3_INCLUDE_DIRS})
-target_link_libraries(qlib_python PRIVATE qlib::boost qlib::dds spdlog::spdlog)
+target_link_libraries(qlib_python PRIVATE qlib::boost qlib::dds qlib::logger)
 
 endif()
 
