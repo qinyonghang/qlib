@@ -1937,6 +1937,16 @@ int32_t camera::subscribe(index index, std::function<void(frame&&)> const& callb
             static_cast<E_DjiLiveViewCameraPosition>(it->second),
             DJI_LIVEVIEW_CAMERA_SOURCE_DEFAULT,
             +[](E_DjiLiveViewCameraPosition position, const uint8_t* buf, uint32_t len) {
+#ifdef DEBUG
+                static std::ofstream ofs{[]() -> string {
+                    auto now = std::chrono::system_clock::now();
+                    auto time = std::chrono::system_clock::to_time_t(now);
+                    auto file = fmt::format("{:%Y-%m-%d_%H-%M-%S}.h264", fmt::localtime(time));
+                    return file;
+                }()};
+
+                ofs.write(reinterpret_cast<char*>(buf), len);
+#endif
                 auto camera_ptr = ref_singleton<self>::make();
                 auto impl_ptr = std::static_pointer_cast<impl>(camera_ptr->impl_ptr);
                 if (impl_ptr != nullptr && buf != nullptr) {
@@ -2163,6 +2173,16 @@ int32_t ir_camera::subscribe(self::direction direction,
         impl_ptr->callbacks[it->second] = std::make_tuple(callback, std::queue<self::frame>{});
         result = DjiPerception_SubscribePerceptionImage(
             it->second, +[](T_DjiPerceptionImageInfo info, uint8_t* buf, uint32_t len) {
+#ifdef DEBUG
+                static std::ofstream ofs{[]() -> string {
+                    auto now = std::chrono::system_clock::now();
+                    auto time = std::chrono::system_clock::to_time_t(now);
+                    auto file = fmt::format("{:%Y-%m-%d_%H-%M-%S}.gray", fmt::localtime(time));
+                    return file;
+                }()};
+
+                ofs.write(reinterpret_cast<char*>(buf), len);
+#endif
                 auto camera_ptr = ref_singleton<self>::make();
                 auto impl_ptr = std::static_pointer_cast<impl>(camera_ptr->impl_ptr);
                 if (impl_ptr != nullptr && buf != nullptr) {
