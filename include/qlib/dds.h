@@ -425,34 +425,19 @@ public:
         return std::make_shared<self>(type_ptr, topic, callback);
     }
 
-    template <class T,
-              class = std::enable_if_t<!std::is_convertible_v<std::decay_t<T>, dds::type::ptr>>>
-    static ptr make(base::string const& topic, std::function<void(T&&)> const& callback) {
-        return std::make_shared<self>(topic, callback, std::in_place_type<T>);
-    }
-
-    template <class T, class = std::void_t<typename T::ptr>>
-    static ptr make(base::string const& topic,
-                    std::function<void(typename T::ptr const&)> const& callback) {
-        return std::make_shared<self>(topic, callback, std::in_place_type<T>);
+    template <class T, class Callback>
+    static ptr make(base::string const& topic, Callback&& callback) {
+        return std::make_shared<self>(topic, std::forward<Callback>(callback),
+                                      std::in_place_type<T>);
     }
 
     explicit subscriber() = default;
 
-    template <class T,
-              class = std::enable_if_t<!std::is_convertible_v<std::decay_t<T>, dds::type::ptr>>>
+    template <class T, class Callback>
     explicit subscriber(base::string const& topic,
-                        std::function<void(T&&)> const& callback,
+                        Callback&& callback,
                         std::in_place_type_t<T> const& = std::in_place_type<T>) {
-        int32_t result{init<T>(topic, callback)};
-        THROW_EXCEPTION(0 == result, "init return {}... ", result);
-    }
-
-    template <class T, class = std::void_t<typename T::ptr>>
-    explicit subscriber(base::string const& topic,
-                        std::function<void(typename T::ptr const&)> const& callback,
-                        std::in_place_type_t<T> const& = std::in_place_type<T>) {
-        int32_t result{init<T>(topic, callback)};
+        int32_t result{init<T>(topic, std::forward<Callback>(callback))};
         THROW_EXCEPTION(0 == result, "init return {}... ", result);
     }
 
@@ -471,7 +456,9 @@ public:
     int32_t init(base::string const& topic,
                  std::function<void(typename T::ptr const&)> const& callback) {
         return init(T::make(), topic, [callback](type::ptr const& type_ptr) {
-            callback(std::static_pointer_cast<T>(type_ptr));
+            auto ptr = std::dynamic_pointer_cast<T>(type_ptr);
+            THROW_EXCEPTION(ptr, "type is {}!", typeid(*type_ptr).name());
+            callback(ptr);
         });
     }
 
@@ -578,6 +565,11 @@ protected:
 };
 
 template <>
+int32_t publisher::init<publisher::base::string>(base::string const& topic, DataWriterQos qos) {
+    return init<dds::string>(topic, qos);
+}
+
+template <>
 int32_t publisher::publish<publisher::base::string>(publisher::base::string const& value) {
     return publish(dds::string::make(value));
 }
@@ -587,13 +579,17 @@ int32_t subscriber::init<subscriber::base::string>(
     base::string const& topic, std::function<void(base::string&&)> const& callback) {
     return init(dds::string::make(), topic, [callback](type::ptr const& type_ptr) {
         auto value_ptr = std::dynamic_pointer_cast<dds::string>(type_ptr);
-        THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*value_ptr).name());
+        THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*type_ptr).name());
         auto value = static_cast<base::string>(*value_ptr);
         callback(std::move(value));
     });
 }
 
 #define REGISTER_TYPE(T)                                                                           \
+    template <>                                                                                    \
+    int32_t publisher::init<T##_t>(base::string const& topic, DataWriterQos qos) {                 \
+        return init<dds::T>(topic, qos);                                                           \
+    }                                                                                              \
     template <>                                                                                    \
     int32_t publisher::publish<T##_t>(T##_t const& value) {                                        \
         return publish(dds::T::make(value));                                                       \
@@ -607,7 +603,7 @@ int32_t subscriber::init<subscriber::base::string>(
                                     std::function<void(T##_t&&)> const& callback) {                \
         return init(dds::T::make(), topic, [callback](type::ptr const& type_ptr) {                 \
             auto value_ptr = std::dynamic_pointer_cast<dds::T>(type_ptr);                          \
-            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*value_ptr).name());                        \
+            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*type_ptr).name());                 \
             auto value = static_cast<T##_t>(*value_ptr);                                           \
             callback(std::move(value));                                                            \
         });                                                                                        \
@@ -617,7 +613,7 @@ int32_t subscriber::init<subscriber::base::string>(
         base::string const& topic, std::function<void(std::vector<T##_t>&&)> const& callback) {    \
         return init(dds::sequence<T##_t>::make(), topic, [callback](type::ptr const& type_ptr) {   \
             auto value_ptr = std::dynamic_pointer_cast<dds::sequence<T##_t>>(type_ptr);            \
-            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*value_ptr).name());                        \
+            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*type_ptr).name());                 \
             auto value = static_cast<std::vector<T##_t>>(*value_ptr);                              \
             callback(std::move(value));                                                            \
         });                                                                                        \
