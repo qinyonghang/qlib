@@ -102,7 +102,11 @@ public:
     subscriber_wrapper(type::ptr const& type_ptr,
                        std::string const& topic,
                        std::function<void(type::ptr const&)> const& callback)
-            : subscriber(type_ptr, topic, callback) {}
+            : subscriber(type_ptr, topic, [callback](type::ptr const& type_ptr) {
+                  PyGILState_STATE gstate = PyGILState_Ensure();
+                  callback(type_ptr);
+                  PyGILState_Release(gstate);
+              }) {}
 };
 
 #define REGISTER_TYPE(T)                                                                           \
