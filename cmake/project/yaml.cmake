@@ -15,4 +15,4 @@ target_include_directories(qlib_yaml PUBLIC
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 
-target_link_libraries(qlib_yaml PUBLIC yaml-cpp::yaml-cpp)
+target_link_libraries(qlib_yaml PUBLIC yaml-cpp::yaml-cpp qlib::logger)

@@ -2,7 +2,6 @@
 
 #define DDS_IMPLEMENTATION
 
-#include <array>
 #include <functional>
 #include <vector>
 
@@ -137,25 +136,16 @@ public:
     using self = string;
     using ptr = std::shared_ptr<self>;
     using base = type;
-    using value_type = base::string;
+    using value_type = string_t;
 
     template <class... Args>
     static ptr make(Args&&... args) {
         return std::make_shared<self>(std::forward<Args>(args)...);
     }
 
-    string(self const&) = delete;
-    string(self&&) = delete;
-
-    self& operator=(self const&) = delete;
-    self& operator=(self&&) = delete;
-
     string() : base{self::type} {}
 
-    template <class String>
-    string(String&& s) : base{self::type} {
-        base::_data->set_string_value(0u, s);
-    }
+    string(value_type const& s) : base{self::type} { base::_data->set_string_value(0u, s); }
 
     self& operator=(value_type const& value) {
         base::_data->set_string_value(0u, value);
@@ -284,20 +274,20 @@ public:
     using base = object;
 
     static ptr make(dds::type::ptr const& type_ptr,
-                    base::string const& topic,
+                    string_t const& topic,
                     DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         return std::make_shared<self>(type_ptr, topic, qos);
     }
 
     template <class T>
-    static ptr make(base::string const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
+    static ptr make(string_t const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         return std::make_shared<self>(topic, qos, std::in_place_type<T>);
     }
 
     publisher() = default;
 
     template <class T>
-    publisher(base::string const& topic,
+    publisher(string_t const& topic,
               DataWriterQos qos = DATAWRITER_QOS_DEFAULT,
               std::in_place_type_t<T> const& = std::in_place_type<T>) {
         int32_t result{init<T>(topic, qos)};
@@ -305,19 +295,19 @@ public:
     }
 
     publisher(dds::type::ptr const& type_ptr,
-              base::string const& topic,
+              string_t const& topic,
               DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         int32_t result{init(type_ptr, topic, qos)};
         THROW_EXCEPTION(0 == result, "init return {}... ", result);
     }
 
     template <class T>
-    int32_t init(base::string const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
+    int32_t init(string_t const& topic, DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         return init(T::make(), topic, qos);
     }
 
     int32_t init(dds::type::ptr const& type_ptr,
-                 base::string const& topic,
+                 string_t const& topic,
                  DataWriterQos qos = DATAWRITER_QOS_DEFAULT) {
         int32_t result{0};
 
@@ -425,13 +415,13 @@ public:
     using ptr = std::shared_ptr<self>;
 
     static ptr make(dds::type::ptr const& type_ptr,
-                    base::string const& topic,
+                    string_t const& topic,
                     std::function<void(type::ptr const&)> const& callback) {
         return std::make_shared<self>(type_ptr, topic, callback);
     }
 
     template <class T, class Callback>
-    static ptr make(base::string const& topic, Callback&& callback) {
+    static ptr make(string_t const& topic, Callback&& callback) {
         return std::make_shared<self>(topic, std::forward<Callback>(callback),
                                       std::in_place_type<T>);
     }
@@ -439,7 +429,7 @@ public:
     explicit subscriber() = default;
 
     template <class T, class Callback>
-    explicit subscriber(base::string const& topic,
+    explicit subscriber(string_t const& topic,
                         Callback&& callback,
                         std::in_place_type_t<T> const& = std::in_place_type<T>) {
         int32_t result{init<T>(topic, std::forward<Callback>(callback))};
@@ -447,7 +437,7 @@ public:
     }
 
     subscriber(type::ptr const& type_ptr,
-               base::string const& topic,
+               string_t const& topic,
                std::function<void(type::ptr const&)> const& callback) {
         int32_t result{init(type_ptr, topic, callback)};
         THROW_EXCEPTION(0 == result, "init return {}... ", result);
@@ -455,10 +445,10 @@ public:
 
     template <class T,
               class = std::enable_if_t<!std::is_convertible_v<std::decay_t<T>, dds::type::ptr>>>
-    int32_t init(base::string const& topic, std::function<void(T&&)> const& callback);
+    int32_t init(string_t const& topic, std::function<void(T&&)> const& callback);
 
     template <class T, class = std::void_t<typename T::ptr>>
-    int32_t init(base::string const& topic,
+    int32_t init(string_t const& topic,
                  std::function<void(typename T::ptr const&)> const& callback) {
         return init(T::make(), topic, [callback](type::ptr const& type_ptr) {
             auto ptr = std::dynamic_pointer_cast<T>(type_ptr);
@@ -468,7 +458,7 @@ public:
     }
 
     int32_t init(type::ptr const& type_ptr,
-                 base::string const& topic,
+                 string_t const& topic,
                  std::function<void(type::ptr const&)> const& callback) {
         int32_t result{0};
 
@@ -570,29 +560,29 @@ protected:
 };
 
 template <>
-int32_t publisher::init<publisher::base::string>(base::string const& topic, DataWriterQos qos) {
+int32_t publisher::init<publisher::string_t>(string_t const& topic, DataWriterQos qos) {
     return init<dds::string>(topic, qos);
 }
 
 template <>
-int32_t publisher::publish<publisher::base::string>(publisher::base::string const& value) {
+int32_t publisher::publish<publisher::string_t>(publisher::string_t const& value) {
     return publish(dds::string::make(value));
 }
 
 template <>
-int32_t subscriber::init<subscriber::base::string>(
-    base::string const& topic, std::function<void(base::string&&)> const& callback) {
+int32_t subscriber::init<subscriber::string_t>(string_t const& topic,
+                                               std::function<void(string_t&&)> const& callback) {
     return init(dds::string::make(), topic, [callback](type::ptr const& type_ptr) {
         auto value_ptr = std::dynamic_pointer_cast<dds::string>(type_ptr);
         THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*type_ptr).name());
-        auto value = static_cast<base::string>(*value_ptr);
+        auto value = static_cast<string_t>(*value_ptr);
         callback(std::move(value));
     });
 }
 
 #define REGISTER_TYPE(T)                                                                           \
     template <>                                                                                    \
-    int32_t publisher::init<T##_t>(base::string const& topic, DataWriterQos qos) {                 \
+    int32_t publisher::init<T##_t>(string_t const& topic, DataWriterQos qos) {                     \
         return init<dds::T>(topic, qos);                                                           \
     }                                                                                              \
     template <>                                                                                    \
@@ -604,7 +594,7 @@ int32_t subscriber::init<subscriber::base::string>(
         return publish(dds::sequence<T##_t>::make(value));                                         \
     }                                                                                              \
     template <>                                                                                    \
-    int32_t subscriber::init<T##_t>(base::string const& topic,                                     \
+    int32_t subscriber::init<T##_t>(string_t const& topic,                                         \
                                     std::function<void(T##_t&&)> const& callback) {                \
         return init(dds::T::make(), topic, [callback](type::ptr const& type_ptr) {                 \
             auto value_ptr = std::dynamic_pointer_cast<dds::T>(type_ptr);                          \
@@ -615,7 +605,7 @@ int32_t subscriber::init<subscriber::base::string>(
     }                                                                                              \
     template <>                                                                                    \
     int32_t subscriber::init<std::vector<T##_t>>(                                                  \
-        base::string const& topic, std::function<void(std::vector<T##_t>&&)> const& callback) {    \
+        string_t const& topic, std::function<void(std::vector<T##_t>&&)> const& callback) {        \
         return init(dds::sequence<T##_t>::make(), topic, [callback](type::ptr const& type_ptr) {   \
             auto value_ptr = std::dynamic_pointer_cast<dds::sequence<T##_t>>(type_ptr);            \
             THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*type_ptr).name());                  \

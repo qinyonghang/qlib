@@ -13,7 +13,7 @@ public:
     using base = object;
 
     struct init_parameter : public base::parameter {
-        string url;
+        string_t url;
         uint32_t width{1920u};
         uint32_t height{1080u};
         uint32_t fps{30u};

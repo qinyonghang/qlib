@@ -19,7 +19,7 @@ public:
     ~profile() { qDebug("Module({}) Cost: {}!", module, time_point::clock::now() - tp); }
 
 protected:
-    string module{};
+    string_t module{};
     time_point tp{time_point::clock::now()};
 };
 

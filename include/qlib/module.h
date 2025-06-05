@@ -1,7 +1,6 @@
 #pragma once
 
 #include "qlib/object.h"
-#include "qlib/singleton.h"
 
 namespace qlib {
 
@@ -12,10 +11,7 @@ public:
     using self = module<T>;
     using ptr = std::shared_ptr<self>;
 
-    struct parameter {};
-
     T& derived() { return static_cast<T&>(*this); }
-
     T const& derived() const { return static_cast<T const&>(*this); }
 
     template <class... Args>
@@ -29,9 +25,7 @@ public:
     }
 
 protected:
-    qlib::string name;
-
-    friend class qlib::ref_singleton<T>;
+    string_t name;
 
     template <class String>
     module(String&& _name) : name{std::forward<String>(_name)} {}

@@ -6,8 +6,7 @@
 #include <string>
 
 namespace qlib {
-using string = std::string;
-using string_t = string;
+using string_t = std::string;
 using byte = std::uint8_t;
 using int8_t = std::int8_t;
 using uint8_t = std::uint8_t;
@@ -55,7 +54,6 @@ protected:
     object() = default;
 
 public:
-    using string = qlib::string;
     using string_t = qlib::string_t;
     using int8_t = qlib::int8_t;
     using uint8_t = qlib::uint8_t;

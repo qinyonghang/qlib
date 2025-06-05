@@ -310,7 +310,7 @@ public:
 
             T_DjiLoggerConsole printFile = {
                 .func = +[](uint8_t const* data, uint16_t dataLen) -> T_DjiReturnCode {
-                    static std::ofstream ofs{[]() -> std::string {
+                    static std::ofstream ofs{[]() {
                         auto& parameter = PARAMETER;
                         auto now = std::chrono::system_clock::now();
                         auto time = std::chrono::system_clock::to_time_t(now);
@@ -338,7 +338,7 @@ public:
                     T_DjiReturnCode returnCode = DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
                     FILE* fp;
 
-                    std::string uartName;
+                    string_t uartName;
                     if (uartNum == DJI_HAL_UART_NUM_0) {
                         uartName = parameter.uart1;
                     } else if (uartNum == DJI_HAL_UART_NUM_1) {
@@ -1938,7 +1938,7 @@ int32_t camera::subscribe(index index, std::function<void(frame&&)> const& callb
             DJI_LIVEVIEW_CAMERA_SOURCE_DEFAULT,
             +[](E_DjiLiveViewCameraPosition position, uint8_t const* buf, uint32_t len) {
 #ifdef DEBUG
-                static std::ofstream ofs{[]() -> string {
+                static std::ofstream ofs{[]() {
                     auto now = std::chrono::system_clock::now();
                     auto time = std::chrono::system_clock::to_time_t(now);
                     auto file = fmt::format("{:%Y-%m-%d_%H-%M-%S}.h264", fmt::localtime(time));
@@ -2174,7 +2174,7 @@ int32_t ir_camera::subscribe(self::direction direction,
         result = DjiPerception_SubscribePerceptionImage(
             it->second, +[](T_DjiPerceptionImageInfo info, uint8_t* buf, uint32_t len) {
 #ifdef DEBUG
-                static std::ofstream ofs{[]() -> string {
+                static std::ofstream ofs{[]() {
                     auto now = std::chrono::system_clock::now();
                     auto time = std::chrono::system_clock::to_time_t(now);
                     auto file = fmt::format("{:%Y-%m-%d_%H-%M-%S}.gray", fmt::localtime(time));

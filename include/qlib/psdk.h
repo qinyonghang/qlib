@@ -5,32 +5,32 @@
 #include <functional>
 #include <vector>
 
-#include "exception.h"
-#include "object.h"
-#include "singleton.h"
+#include "qlib/exception.h"
+#include "qlib/object.h"
+#include "qlib/singleton.h"
 
 namespace qlib {
 
 namespace psdk {
 
 struct init_parameter {
-    string log_prefix{"logs/psdk"};
+    string_t log_prefix{"logs/psdk"};
 
     uint32_t connect_type;
-    string app_name;
-    string app_id;
-    string app_key;
-    string app_license;
-    string developer_account;
-    string baud_rate;
+    string_t app_name;
+    string_t app_id;
+    string_t app_key;
+    string_t app_license;
+    string_t developer_account;
+    string_t baud_rate;
 
     // uart
-    std::string uart1;
-    std::string uart2;
+    string_t uart1;
+    string_t uart2;
 
     // network
     struct {
-        string name;
+        string_t name;
         uint32_t vid;
         uint32_t pid;
 
@@ -42,8 +42,8 @@ struct init_parameter {
         uint32_t vid;
         uint32_t pid;
         struct {
-            string ep_in;
-            string ep_out;
+            string_t ep_in;
+            string_t ep_out;
             uint16_t interface_num;
             uint16_t endpoint_in;
             uint16_t endpoint_out;
@@ -111,8 +111,8 @@ public:
         action finish_action{action::no_action};
         uint32_t repeat_times{0u};
 
-        string to_string() const {
-            std::string out;
+        auto to_string() const {
+            string_t out;
             for (auto& point : points) {
                 out += fmt::format("[{},{},{}]", point.longitude, point.latitude,
                                    point.relative_height);
@@ -240,82 +240,5 @@ protected:
 };
 
 };  // namespace psdk
-
-// #ifdef DDS_IMPLEMENTATION
-// namespace dds {
-
-// template <>
-// class type_factory<psdk::ir_camera::frame> : public type_factory<void> {
-// public:
-//     using base = type_factory<void>;
-//     using self = type_factory<psdk::ir_camera::frame>;
-//     using ptr = std::shared_ptr<self>;
-//     using value_type = psdk::ir_camera::frame;
-
-//     static DynamicType::_ref_type make_type() {
-//         auto type_factory = DynamicTypeBuilderFactory::get_instance();
-
-//         auto struct_descriptor = traits<TypeDescriptor>::make_shared();
-//         struct_descriptor->name("struct");
-//         struct_descriptor->kind(TK_STRUCTURE);
-//         auto struct_builder = type_factory->create_type(struct_descriptor);
-
-//         {
-//             auto member_descriptor = traits<MemberDescriptor>::make_shared();
-//             member_descriptor->name("data");
-//             member_descriptor->type(
-//                 type_factory
-//                     ->create_sequence_type(type_factory->get_primitive_type(TK_UINT8),
-//                                            static_cast<uint32_t>(LENGTH_UNLIMITED))
-//                     ->build());
-//             struct_builder->add_member(member_descriptor);
-//         }
-
-//         {
-//             auto member_descriptor = traits<MemberDescriptor>::make_shared();
-//             member_descriptor->name("width");
-//             member_descriptor->type(type_factory->get_primitive_type(TK_UINT32));
-//             struct_builder->add_member(member_descriptor);
-//         }
-
-//         {
-//             auto member_descriptor = traits<MemberDescriptor>::make_shared();
-//             member_descriptor->name("height");
-//             member_descriptor->type(type_factory->get_primitive_type(TK_UINT32));
-//             struct_builder->add_member(member_descriptor);
-//         }
-
-//         return struct_builder->build();
-//     }
-
-//     static value_type get(DynamicData::_ref_type const& data) {
-//         value_type value{};
-//         data->get_uint8_values(value.data, data->get_member_id_by_name("data"));
-//         data->get_uint32_value(value.width, data->get_member_id_by_name("width"));
-//         data->get_uint32_value(value.height, data->get_member_id_by_name("height"));
-//         return value;
-//     }
-
-//     template <class _T>
-//     static void set(DynamicData::_ref_type& data, _T&& value) {
-//         data->set_uint8_values(data->get_member_id_by_name("data"), value.data);
-//         data->set_uint32_value(data->get_member_id_by_name("width"), value.width);
-//         data->set_uint32_value(data->get_member_id_by_name("height"), value.height);
-//     }
-
-//     static DynamicData::_ref_type make_data_ptr(DynamicType::_ref_type type) {
-//         return base::make_data_ptr(type);
-//     }
-
-//     template <class _T>
-//     static DynamicData::_ref_type make_data_ptr(DynamicType::_ref_type type, _T&& value) {
-//         auto data_ptr = base::make_data_ptr(type);
-//         set(data_ptr, std::forward<_T>(value));
-//         return data_ptr;
-//     }
-// };
-
-// };  // namespace dds
-// #endif
 
 };  // namespace qlib

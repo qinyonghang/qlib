@@ -4,7 +4,8 @@
 
 #include "yaml-cpp/yaml.h"
 
-#include "exception.h"
+#include "qlib/exception.h"
+#include "qlib/object.h"
 
 namespace YAML {
 #ifdef _GLIBCXX_FILESYSTEM
@@ -129,7 +130,7 @@ void set(Value* value, YAML::Node const& node, std::string_view key) {
 
 class loader : public object {
 public:
-    static node make(string const& path) { return YAML::LoadFile(path); }
+    static node make(string_t const& path) { return YAML::LoadFile(path); }
 
 #ifdef _GLIBCXX_FILESYSTEM
     static node make(std::filesystem::path const& path) { return make(path.string()); }
@@ -161,6 +162,11 @@ public:
         *value_ptr = get<T>(node, key, default_value);
     }
 };
+
+#ifdef PSDK_IMPLEMENTATION
+template <>
+psdk::init_parameter loader::get<psdk::init_parameter>(node const& node);
+#endif
 
 };  // namespace yaml
 

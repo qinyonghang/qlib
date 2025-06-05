@@ -193,7 +193,7 @@ public:
 
     factory() = default;
 
-    self& name(string const& name) {
+    self& name(string_t const& name) {
         self::_name = name;
         return *this;
     }
@@ -236,7 +236,7 @@ public:
     }
 
 protected:
-    string _name{"default"};
+    string_t _name{"default"};
     bool _console{false};
     level _console_level;
     std::filesystem::path _prefix;
@@ -245,7 +245,7 @@ protected:
 
 class register2 final : public object {
 public:
-    static auto build(std::string const& name,
+    static auto build(string_t const& name,
                       bool console = true,
                       bool file = true,
                       std::filesystem::path const& log_file_prefix = "logs") {

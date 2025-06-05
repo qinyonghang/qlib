@@ -7,7 +7,7 @@
 
 namespace qlib {
 
-template <typename T = string>
+template <typename T = string_t>
 class loader final : public object {
 public:
     using base = object;
@@ -89,14 +89,14 @@ public:
 };
 
 template <>
-struct loader<std::string>::impl : public object {
+struct loader<string_t>::impl : public object {
     using self = impl;
     using ptr = std::shared_ptr<self>;
-    std::string data;
+    string_t data;
 };
 
 template <>
-int32_t loader<std::string>::init(char const* path) {
+int32_t loader<string_t>::init(char const* path) {
     int32_t result{0};
 
     do {
@@ -108,7 +108,7 @@ int32_t loader<std::string>::init(char const* path) {
 
         auto impl_ptr = std::make_shared<self::impl>();
         impl_ptr->data =
-            std::string{std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
+            string_t{std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
         this->impl_ptr = impl_ptr;
     } while (0);
 

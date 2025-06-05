@@ -217,7 +217,7 @@ public:
     using base = publisher;
     using self = publisher_wrapper;
 
-    publisher_wrapper(abstract_type::ptr const& type, qlib::string const& topic)
+    publisher_wrapper(abstract_type::ptr const& type, string_t const& topic)
             : base{type->make(), topic} {}
 
     int32_t publish(abstract_type::ptr const& type) { return base::publish(type->make()); }
@@ -229,7 +229,7 @@ public:
     using self = subscriber_wrapper;
 
     subscriber_wrapper(abstract_type::ptr const& type,
-                       qlib::string const& topic,
+                       string_t const& topic,
                        std::function<void(abstract_type::ptr const&)> const& callback)
             : base{type->make(), topic, [callback](type::ptr const& type_ptr) {
                        PyGILState_STATE gstate = PyGILState_Ensure();

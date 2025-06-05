@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include <memory>
 #include <mutex>
 
 #include "qlib/exception.h"

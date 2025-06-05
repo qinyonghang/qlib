@@ -15,7 +15,7 @@ namespace mqtt {
 
 class action_listener : public ::mqtt::iaction_listener {
 protected:
-    static inline std::map<::mqtt::token::Type, qlib::string> ops{
+    static inline std::map<::mqtt::token::Type, string_t> ops{
         {::mqtt::token::Type::CONNECT, "CONNECT"},
         {::mqtt::token::Type::DISCONNECT, "DISCONNECT"},
         {::mqtt::token::Type::SUBSCRIBE, "SUBSCRIBE"},
@@ -60,7 +60,7 @@ public:
 
 class callback : public ::mqtt::callback {
 protected:
-    std::function<void(string const&, string const&)> cb{nullptr};
+    std::function<void(string_t const&, string_t const&)> cb{nullptr};
 
 public:
     using self = callback;
@@ -71,9 +71,9 @@ public:
     template <class Callback>
     callback(Callback&& _cb) : cb{std::forward<Callback>(_cb)} {}
 
-    void connected(string const& cause) override { qInfo("Connected! Cause={}", cause); }
+    void connected(string_t const& cause) override { qInfo("Connected! Cause={}", cause); }
 
-    void connection_lost(string const& cause) override {
+    void connection_lost(string_t const& cause) override {
         qError("Connection lost! Cause={}", cause);
     }
 
