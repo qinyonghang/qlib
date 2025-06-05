@@ -33,6 +33,7 @@ class CMakeBuild(build_ext):
             "-DPython3_EXECUTABLE=" + sys.executable,
             "-DCMAKE_BUILD_TYPE=Release",
             "-DBUILD_PYTHON_MODULE=ON",  # Custom flag to indicate building for Python
+            "-DBUILD_TEST=OFF"
         ]
 
         build_args = ["--config", "Release"]

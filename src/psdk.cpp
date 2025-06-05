@@ -1936,7 +1936,7 @@ int32_t camera::subscribe(index index, std::function<void(frame&&)> const& callb
         result = DjiLiveview_StartH264Stream(
             static_cast<E_DjiLiveViewCameraPosition>(it->second),
             DJI_LIVEVIEW_CAMERA_SOURCE_DEFAULT,
-            +[](E_DjiLiveViewCameraPosition position, const uint8_t* buf, uint32_t len) {
+            +[](E_DjiLiveViewCameraPosition position, uint8_t const* buf, uint32_t len) {
 #ifdef DEBUG
                 static std::ofstream ofs{[]() -> string {
                     auto now = std::chrono::system_clock::now();
@@ -1945,7 +1945,7 @@ int32_t camera::subscribe(index index, std::function<void(frame&&)> const& callb
                     return file;
                 }()};
 
-                ofs.write(reinterpret_cast<char*>(buf), len);
+                ofs.write(reinterpret_cast<char const*>(buf), len);
 #endif
                 auto camera_ptr = ref_singleton<self>::make();
                 auto impl_ptr = std::static_pointer_cast<impl>(camera_ptr->impl_ptr);

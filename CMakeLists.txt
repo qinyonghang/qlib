@@ -57,10 +57,11 @@ option(BUILD_PYTHON_MODULE "Build Python Module!" OFF)
 if (BUILD_PYTHON_MODULE)
 
 set(ROOT_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE STRING "Root directory")
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/python3.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/project/boost.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/project/spdlog.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/project/fastdds.cmake)
+include(${ROOT_DIR}/cmake/defines.cmake)
+include(${ROOT_DIR}/cmake/python3.cmake)
+include(${ROOT_DIR}/cmake/project/boost.cmake)
+include(${ROOT_DIR}/cmake/project/logger.cmake)
+include(${ROOT_DIR}/cmake/project/dds.cmake)
 
 add_library(qlib_python MODULE src/dds_python.cpp)
 
@@ -89,4 +90,5 @@ target_link_libraries(qlib_python PRIVATE qlib::boost qlib::dds qlib::logger)
 
 endif()
 
-# include(${CMAKE_CURRENT_LIST_DIR}/cmake/tests.cmake)
+set(ROOT_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE STRING "Root directory")
+include(${ROOT_DIR}/cmake/tests.cmake)

@@ -64,13 +64,6 @@ protected:
     friend class publisher;
     friend class subscriber;
 
-protected:
-    DynamicType::_ref_type _type{nullptr};
-    DynamicData::_ref_type _data{nullptr};
-
-    DynamicType::_ref_type make_type() { return self::_type; }
-    DynamicData::_ref_type make_data_ptr() { return self::_data; }
-
     template <class Builder>
     static DynamicType::_ref_type create(Builder&& builder) {
         auto type_factory = DynamicTypeBuilderFactory::get_instance();
@@ -87,6 +80,18 @@ protected:
 
         return struct_builder->build();
     }
+
+    static DynamicData::_ref_type create(DynamicType::_ref_type type) {
+        auto data_factory = DynamicDataFactory::get_instance();
+        return data_factory->create_data(type);
+    }
+
+protected:
+    DynamicType::_ref_type _type{nullptr};
+    DynamicData::_ref_type _data{nullptr};
+
+    DynamicType::_ref_type make_type() { return self::_type; }
+    DynamicData::_ref_type make_data_ptr() { return self::_data; }
 
     template <class T>
     static DynamicType::_ref_type make(DynamicTypeBuilderFactory::_ref_type type_factory);
@@ -603,7 +608,7 @@ int32_t subscriber::init<subscriber::base::string>(
                                     std::function<void(T##_t&&)> const& callback) {                \
         return init(dds::T::make(), topic, [callback](type::ptr const& type_ptr) {                 \
             auto value_ptr = std::dynamic_pointer_cast<dds::T>(type_ptr);                          \
-            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*type_ptr).name());                 \
+            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*type_ptr).name());                  \
             auto value = static_cast<T##_t>(*value_ptr);                                           \
             callback(std::move(value));                                                            \
         });                                                                                        \
@@ -613,7 +618,7 @@ int32_t subscriber::init<subscriber::base::string>(
         base::string const& topic, std::function<void(std::vector<T##_t>&&)> const& callback) {    \
         return init(dds::sequence<T##_t>::make(), topic, [callback](type::ptr const& type_ptr) {   \
             auto value_ptr = std::dynamic_pointer_cast<dds::sequence<T##_t>>(type_ptr);            \
-            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*type_ptr).name());                 \
+            THROW_EXCEPTION(value_ptr, "value is {}!", typeid(*type_ptr).name());                  \
             auto value = static_cast<std::vector<T##_t>>(*value_ptr);                              \
             callback(std::move(value));                                                            \
         });                                                                                        \

@@ -1,3 +1,7 @@
+if (NOT LOGGER_CMAKE_INCLUDED)
+
+set(LOGGER_CMAKE_INCLUDED TRUE)
+
 include(${ROOT_DIR}/cmake/find_thirdparty.cmake)
 find_thirdparty(spdlog
     "https://github.com/gabime/spdlog/archive/refs/tags/v1.15.0.tar.gz"
@@ -17,3 +21,5 @@ target_include_directories(qlib_logger PUBLIC
 )
 
 target_link_libraries(qlib_logger PUBLIC spdlog::spdlog)
+
+endif()

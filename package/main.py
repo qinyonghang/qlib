@@ -81,13 +81,13 @@ if __name__ == "__main__":
         msg_f64.set(2.718281828459045)
         publisher_f64.publish(msg_f64)
 
-        # 越界测试
-        msg_u8 = dds.uint8()
-        msg_u8.set(300)  # uint8 最大为 255
-        publisher_u8.publish(msg_u8)
+        # # 越界测试
+        # msg_u8 = dds.uint8()
+        # msg_u8.set(300)  # uint8 最大为 255
+        # publisher_u8.publish(msg_u8)
 
-        msg_i8 = dds.int8()
-        msg_i8.set(-129)  # int8 最小为 -128
-        publisher_i8.publish(msg_i8)
+        # msg_i8 = dds.int8()
+        # msg_i8.set(-129)  # int8 最小为 -128
+        # publisher_i8.publish(msg_i8)
 
         time.sleep(1)

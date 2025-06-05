@@ -7,6 +7,7 @@
 
 namespace qlib {
 using string = std::string;
+using string_t = string;
 using byte = std::uint8_t;
 using int8_t = std::int8_t;
 using uint8_t = std::uint8_t;
@@ -18,6 +19,9 @@ using int64_t = std::int64_t;
 using uint64_t = std::uint64_t;
 using float32_t = float;
 using float64_t = double;
+using bool_t = bool;
+constexpr bool_t True = true;
+constexpr bool_t False = false;
 
 struct position {
     float64_t longitude;
@@ -52,6 +56,7 @@ protected:
 
 public:
     using string = qlib::string;
+    using string_t = qlib::string_t;
     using int8_t = qlib::int8_t;
     using uint8_t = qlib::uint8_t;
     using int16_t = qlib::int16_t;
@@ -62,6 +67,9 @@ public:
     using uint64_t = qlib::uint64_t;
     using float32_t = qlib::float32_t;
     using float64_t = qlib::float64_t;
+    using bool_t = qlib::bool_t;
+    constexpr static inline bool_t True = qlib::True;
+    constexpr static inline bool_t False = qlib::False;
 
     struct parameter {};
 

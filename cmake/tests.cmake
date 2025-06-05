@@ -1,15 +1,16 @@
 
 option(BUILD_TEST "Build tests" ON)
 if (BUILD_TEST)
-    if (NOT TARGET qlib::qlib)
-        cmake_minimum_required(VERSION 3.22)
-        project(tests)
-        set(out_dir ${CMAKE_CURRENT_BINARY_DIR})
-        find_package(qlib REQUIRED PATHS ${CMAKE_CURRENT_LIST_DIR} NO_DEFAULT_PATH)
-    else ()
-        set(out_dir ${CMAKE_CURRENT_BINARY_DIR}/tests)
-    endif ()
     enable_testing()
+
+    include(${ROOT_DIR}/cmake/defines.cmake)
+    include(${ROOT_DIR}/cmake/python3.cmake)
+    include(${ROOT_DIR}/cmake/project/argparse.cmake)
+    include(${ROOT_DIR}/cmake/project/logger.cmake)
+    include(${ROOT_DIR}/cmake/project/dds.cmake)
+    include(${ROOT_DIR}/cmake/project/ffmpeg.cmake)
+
+    set(out_dir ${CMAKE_CURRENT_BINARY_DIR}/tests)
     file(GLOB tests ${PROJECT_SOURCE_DIR}/tests/*.cpp)
     foreach(test IN LISTS tests)
         get_filename_component(test_name ${test} NAME_WE)
@@ -23,7 +24,7 @@ if (BUILD_TEST)
             CXX_STANDARD_REQUIRED ON
             RUNTIME_OUTPUT_DIRECTORY "${out_dir}"
         )
-        target_link_libraries(${test_name} PRIVATE qlib::qlib)
+        target_link_libraries(${test_name} PRIVATE qlib::dds qlib::logger qlib::argparse qlib::ffmpeg)
         if(MSVC)
             target_compile_options(${test_name} PRIVATE /utf-8)
         endif()
