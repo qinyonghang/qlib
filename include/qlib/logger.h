@@ -82,8 +82,8 @@ template <>
 struct fmt::formatter<T_DjiPerceptionRawImageInfo> : public fmt::formatter<std::string> {
     auto format(T_DjiPerceptionRawImageInfo const& value, format_context& ctx) const {
         return fmt::formatter<std::string>::format(
-            fmt::format("[0x{:x},{},{},{},{}]", value.index, value.direction, value.bpp,
-                        value.width, value.height),
+            fmt::format("[{:#x},{},{},{},{}]", value.index, value.direction, value.bpp, value.width,
+                        value.height),
             ctx);
     }
 };
@@ -136,6 +136,34 @@ struct fmt::formatter<std::vector<T>> : public fmt::formatter<std::string> {
         return fmt::formatter<std::string>::format(out.str(), ctx);
     }
 };
+
+#ifdef _GLIBCXX_ARRAY
+template <class T, size_t N>
+struct fmt::formatter<std::array<T, N>> : fmt::formatter<std::string> {
+    auto format(std::array<T, N> const& vector, format_context& ctx) const {
+        std::stringstream out;
+        out << "[";
+        for (auto i = 0u; i < vector.size() - 1; ++i) {
+            out << fmt::format("{},", vector[i]);
+        }
+        if (vector.size() > 0) {
+            out << fmt::format("{}", vector.back());
+        }
+        out << "]";
+        return fmt::formatter<std::string>::format(out.str(), ctx);
+    }
+};
+#endif
+
+#ifdef _STL_PAIR_H
+template <class T1, class T2>
+struct fmt::formatter<std::pair<T1, T2>> : fmt::formatter<std::string> {
+    auto format(std::pair<T1, T2> const& value, format_context& ctx) const {
+        return fmt::formatter<std::string>::format(
+            fmt::format("[{},{}]", value.first, value.second), ctx);
+    }
+};
+#endif
 
 #ifdef _GLIBCXX_ARRAY
 template <class T, size_t N>

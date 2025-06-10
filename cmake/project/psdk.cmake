@@ -1,5 +1,10 @@
+if (NOT DEFINED PSDK_INCLUDE_CMAKE)
+
+set(PSDK_INCLUDE_CMAKE 1)
 
 include(${ROOT_DIR}/cmake/find_thirdparty.cmake)
+include(${ROOT_DIR}/cmake/project/logger.cmake)
+include(${ROOT_DIR}/cmake/project/apriltags.cmake)
 
 find_thirdparty(psdk
     "https://github.com/dji-sdk/Payload-SDK/archive/refs/tags/3.11.1.tar.gz"
@@ -35,5 +40,8 @@ target_include_directories(psdk PUBLIC
 target_link_libraries(psdk PUBLIC
     ${ROOT_DIR}/third_party/psdk/psdk_lib/lib/aarch64-linux-gnu-gcc/libpayloadsdk.a
     ${ROOT_DIR}/third_party/libusb/out_aarch64/lib/libusb-1.0.a
-    spdlog::spdlog
+    qlib::logger
+    qlib::apriltags
 )
+
+endif()

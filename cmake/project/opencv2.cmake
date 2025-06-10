@@ -1,3 +1,6 @@
+if (NOT DEFINED OPENCV2_INCLUDE_CMAKE)
+
+set(OPENCV2_INCLUDE_CMAKE 1)
 
 include(${ROOT_DIR}/cmake/find_thirdparty.cmake)
 find_thirdparty(OpenCV
@@ -23,3 +26,5 @@ target_include_directories(qlib_opencv PUBLIC
 target_link_libraries(qlib_opencv PUBLIC ${OpenCV_LIBRARIES})
 
 # install(FILES ${ROOT_DIR}/third_party/OpenCV/install2/linux/lib/libopencv_world.so.4.9.0 DESTINATION lib RENAME libopencv_world.so.409)
+
+endif()

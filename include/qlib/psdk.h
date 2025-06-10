@@ -3,6 +3,7 @@
 #define PSDK_IMPLEMENTATION
 
 #include <functional>
+#include <future>
 #include <vector>
 
 #include "qlib/exception.h"
@@ -98,11 +99,6 @@ public:
         uint32_t retry_max{30u};
     };
 
-    struct parameter {
-        using self = parameter;
-        using ptr = std::shared_ptr<self>;
-    };
-
     struct waypoints_parameter : public parameter {
         using self = waypoints_parameter;
         using ptr = std::shared_ptr<self>;
@@ -149,6 +145,78 @@ protected:
     object::ptr impl_ptr;
 
     friend class ref_singleton<self>;
+};
+
+class autoland : public object {
+public:
+    using self = autoland;
+    using base = object;
+    using ptr = base::sptr<self>;
+
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        return ref_singleton<self>::make(std::forward<Args>(args)...);
+    }
+
+    autoland() = default;
+
+    template <class... Args>
+    autoland(Args&&... args) {
+        int32_t result{init(std::forward<Args>(args)...)};
+        THROW_EXCEPTION(0 == result, "init return {}... ", result);
+    }
+
+    struct init_parameter : public base::parameter {};
+
+    int32_t init(init_parameter const&);
+
+    int32_t init() { return init(init_parameter{}); }
+
+    struct start_parameter : public base::parameter {
+        bool_t enable_vision{True};
+        string_t codes{"Tag16h5"};
+        std::function<void(int32_t)> callback{nullptr};
+
+        auto to_string() const -> string_t {
+            return fmt::format("[{},{},{}]", enable_vision, codes, static_cast<bool>(callback));
+        }
+    };
+    int32_t start(start_parameter const&);
+
+    template <class Callback,
+              class = std::enable_if_t<
+                  std::is_convertible_v<std::decay_t<Callback>, std::function<void(int32_t)>>>>
+    int32_t start(Callback&& callback) {
+        return start(start_parameter{
+            .enable_vision = True,
+            .codes = "Tag16h5",
+            .callback = std::forward<Callback>(callback),
+        });
+    }
+
+    int32_t start() {
+        auto p = std::make_shared<std::promise<int32_t>>();
+        auto f = p->get_future();
+
+        int32_t result{start([p](int32_t result) { p->set_value(result); })};
+        if (result == 0) {
+            result = f.get();
+        }
+
+        return result;
+    }
+
+    struct stop_parameter : public base::parameter {
+        std::function<void(int32_t)> callback{nullptr};
+
+        auto to_string() const -> string_t {
+            return fmt::format("[{}]", static_cast<bool>(callback));
+        }
+    };
+    int32_t stop(stop_parameter const&);
+
+protected:
+    object::ptr impl;
 };
 
 class camera final : public object {
@@ -203,13 +271,7 @@ public:
 
     struct init_parameter {};
 
-    struct frame {
-        std::vector<uint8_t> data;
-        uint32_t width;
-        uint32_t height;
-    };
-
-    enum class direction : uint32_t {
+    enum class index : uint32_t {
         left,
         right,
         front,
@@ -218,20 +280,38 @@ public:
         bottom,
     };
 
-    ir_camera(init_parameter const& parameter) {
-        int32_t result{init(parameter)};
-        THROW_EXCEPTION(0 == result, "init return {}... ", result);
-    }
-
-    int32_t init(init_parameter const& parameter);
-
-    int32_t subscribe(self::direction, std::function<void(frame&&)> const&);
-    int32_t unsubscribe(self::direction);
-
     template <class... Args>
     static ptr make(Args&&... args) {
         return ref_singleton<self>::make(std::forward<Args>(args)...);
     }
+
+    template <class... Args>
+    ir_camera(Args&&... args) {
+        int32_t result{init(std::forward<Args>(args)...)};
+        THROW_EXCEPTION(0 == result, "init return {}... ", result);
+    }
+
+    int32_t init(init_parameter const& parameter);
+    int32_t init() { return init(init_parameter{}); }
+
+    struct frame {
+        std::vector<uint8_t> data;
+        bool_t left;
+    };
+
+    int32_t subscribe(index, std::function<void(frame&&)> const&);
+    int32_t unsubscribe(index);
+
+    struct parameter : public base::parameter {
+        uint32_t width{0u};
+        uint32_t height{0u};
+        std::array<float32_t, 9u> intrinsics_left, intrinsics_right;
+        std::array<float32_t, 9u> rotation_left_in_right;
+        std::array<float32_t, 3u> translation_left_in_right;
+
+        auto to_string() const -> string_t { return fmt::format("[{},{}]", width, height); }
+    };
+    parameter get(index index) const;
 
 protected:
     object::ptr impl_ptr;

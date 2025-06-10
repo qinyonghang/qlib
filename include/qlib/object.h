@@ -18,9 +18,16 @@ using int64_t = std::int64_t;
 using uint64_t = std::uint64_t;
 using float32_t = float;
 using float64_t = double;
+
 using bool_t = bool;
 constexpr bool_t True = true;
 constexpr bool_t False = false;
+
+template <class T>
+using ptr = std::shared_ptr<T>;
+
+template <class T>
+using uptr = std::unique_ptr<T>;
 
 struct position {
     float64_t longitude;
@@ -28,17 +35,17 @@ struct position {
     float64_t relative_height; /*! relative to takeoff height*/
 };
 
-enum : int32_t {
-    OK = 0,
-    UNKNOWN_ERROR = -1,
-    IMPL_NULLPTR = -2,
-    PARAM_INVALID = -3,
-    FILE_NOT_FOUND = -4,
-    FILE_NOT_SUPPORT = -5,
-    FILE_INVALID = -6,
-    YAML_PARSE_ERROR = -7,
-    ERRORCODE_MAX = -8
-};
+// enum : int32_t {
+//     OK = 0,
+//     UNKNOWN_ERROR = -1,
+//     IMPL_NULLPTR = -2,
+//     PARAM_INVALID = -3,
+//     FILE_NOT_FOUND = -4,
+//     FILE_NOT_SUPPORT = -5,
+//     FILE_INVALID = -6,
+//     YAML_PARSE_ERROR = -7,
+//     ERRORCODE_MAX = -8
+// };
 
 enum class error : int32_t {
     unknown = -1,
@@ -50,9 +57,6 @@ enum class error : int32_t {
 };
 
 class object {
-protected:
-    object() = default;
-
 public:
     using string_t = qlib::string_t;
     using int8_t = qlib::int8_t;
@@ -65,14 +69,27 @@ public:
     using uint64_t = qlib::uint64_t;
     using float32_t = qlib::float32_t;
     using float64_t = qlib::float64_t;
+
     using bool_t = qlib::bool_t;
     constexpr static inline bool_t True = qlib::True;
     constexpr static inline bool_t False = qlib::False;
 
-    struct parameter {};
+    struct parameter {
+        using self = parameter;
+        using ptr = std::shared_ptr<self>;
+    };
 
     using self = object;
     using ptr = std::shared_ptr<self>;
+
+    template <class T>
+    using sptr = qlib::ptr<T>;
+
+    template <class T>
+    using uptr = qlib::uptr<T>;
+
+protected:
+    object() = default;
 };
 
 static inline bool likely(bool ok) {
