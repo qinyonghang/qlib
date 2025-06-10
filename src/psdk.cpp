@@ -2196,14 +2196,26 @@ int32_t ir_camera::subscribe(self::index index, std::function<void(frame&&)> con
             it->second, +[](T_DjiPerceptionImageInfo info, uint8_t* buf, uint32_t len) {
                 qTrace("IR Camera: Receive Image: {}!", info);
 #ifdef DEBUG
-                static std::ofstream ofs{[]() {
+                static std::ofstream ofs_left{[]() {
                     auto now = std::chrono::system_clock::now();
                     auto time = std::chrono::system_clock::to_time_t(now);
-                    auto file = fmt::format("{:%Y-%m-%d_%H-%M-%S}.gray", fmt::localtime(time));
+                    auto file = fmt::format("{:%Y-%m-%d_%H-%M-%S}_left.gray", fmt::localtime(time));
                     return file;
                 }()};
 
-                ofs.write(reinterpret_cast<char*>(buf), len);
+                static std::ofstream ofs_right{[]() {
+                    auto now = std::chrono::system_clock::now();
+                    auto time = std::chrono::system_clock::to_time_t(now);
+                    auto file =
+                        fmt::format("{:%Y-%m-%d_%H-%M-%S}_right.gray", fmt::localtime(time));
+                    return file;
+                }()};
+
+                if ((info.dataType % 2) == 1) {
+                    ofs_left.write(reinterpret_cast<char*>(buf), len);
+                } else {
+                    ofs_right.write(reinterpret_cast<char*>(buf), len);
+                }
 #endif
                 auto camera_ptr = ref_singleton<self>::make();
                 auto impl_ptr = std::static_pointer_cast<impl>(camera_ptr->impl_ptr);
