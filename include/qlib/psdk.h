@@ -64,6 +64,7 @@ struct init_parameter {
     }
 };
 
+object::ptr make();
 object::ptr make(init_parameter const&);
 
 class flight_control final : public object {
@@ -71,6 +72,17 @@ public:
     using base = object;
     using self = flight_control;
     using ptr = std::shared_ptr<self>;
+
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        ptr result{nullptr};
+
+        ptr ptr = ref_singleton<self>::make();
+        if (ptr->init(std::forward<Args>(args)...) == 0) {
+            result = ptr;
+        }
+        return result;
+    }
 
     enum class action : uint32_t {
         no_action,
@@ -117,6 +129,8 @@ public:
                                repeat_times);
         }
     };
+
+    flight_control() = default;
 
     flight_control(init_parameter const& parameter) {
         int32_t result{init(parameter)};
@@ -315,6 +329,56 @@ public:
 
 protected:
     object::ptr impl_ptr;
+
+    friend class ref_singleton<self>;
+};
+
+class data_subcriber final : public object {
+public:
+    using self = data_subcriber;
+    using ptr = sptr<self>;
+
+    struct data final : public object {
+        uint32_t status;
+        uint32_t mode;
+        std::array<float64_t, 3> velocity;
+        std::array<float64_t, 3> euler_angles;
+        float64_t altitude;
+        std::array<float64_t, 3> position{0., 0., 0.};
+        // std::array<float64_t, 3> rtk_position{0., 0., 0.};
+        size_t number_of_satellites;
+        std::array<float64_t, 3> compass;
+        std::array<float64_t, 3> battery;
+
+        auto to_string() {
+            return fmt::format("[status={}, mode={}, velocity=[{},{},{}], euler_angles=[{},{},{}], "
+                               "altitude={}, position=[{},{},{}], number_of_satellites={}, "
+                               "compass=[{},{},{}], battery=[{},{},{}]]",
+                               status, mode, velocity[0], velocity[1], velocity[2], euler_angles[0],
+                               euler_angles[1], euler_angles[2], altitude, position[0], position[1],
+                               position[2], number_of_satellites, compass[0], compass[1],
+                               compass[2], battery[0], battery[1], battery[2]);
+        }
+    };
+
+    data get() const;
+
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        ptr result{nullptr};
+
+        ptr ptr = ref_singleton<self>::make();
+        if (ptr->init(std::forward<Args>(args)...) == 0) {
+            result = ptr;
+        }
+        return result;
+    }
+
+    data_subcriber() = default;
+    int32_t init(object::ptr const&);
+
+protected:
+    object::ptr impl;
 
     friend class ref_singleton<self>;
 };

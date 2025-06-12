@@ -24,7 +24,7 @@ constexpr bool_t True = true;
 constexpr bool_t False = false;
 
 template <class T>
-using ptr = std::shared_ptr<T>;
+using sptr = std::shared_ptr<T>;
 
 template <class T>
 using uptr = std::unique_ptr<T>;
@@ -80,13 +80,15 @@ public:
     };
 
     using self = object;
-    using ptr = std::shared_ptr<self>;
+    using ptr = qlib::sptr<self>;
 
     template <class T>
-    using sptr = qlib::ptr<T>;
+    using sptr = qlib::sptr<T>;
 
     template <class T>
     using uptr = qlib::uptr<T>;
+
+    virtual ~object() = default;
 
 protected:
     object() = default;

@@ -24,6 +24,4 @@ target_include_directories(qlib_eigen PUBLIC
     ${EIGEN3_INCLUDE_DIR}
 )
 
-target_link_libraries(qlib_eigen PUBLIC argparse::argparse)
-
 endif()

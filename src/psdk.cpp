@@ -1373,6 +1373,10 @@ protected:
 
 };  // namespace
 
+object::ptr make() {
+    return ref_singleton<register2>::make();
+}
+
 object::ptr make(init_parameter const& parameter) {
     return ref_singleton<register2>::make(parameter);
 }
@@ -2722,6 +2726,320 @@ int32_t autoland::stop(stop_parameter const& parameter) {
         impl->disable = True;
         impl->disable_parameter = parameter;
         impl->cond_var.notify_one();
+    } while (false);
+
+    return result;
+}
+
+namespace __data_subcriber__ {
+struct impl final : public object {
+    using self = data_subcriber;
+
+    class register2 final : public object {
+    public:
+        register2() {
+            T_DjiReturnCode result{0u};
+            result = DjiFcSubscription_Init();
+            THROW_EXCEPTION(result == 0, "DataSubscriber: DjiFcSubscription_Init return {:#x}!",
+                            result);
+            qInfo("DataSubscriber: Init!");
+        }
+
+        ~register2() {
+            T_DjiReturnCode result{0u};
+            result = DjiFcSubscription_DeInit();
+            if (0 != result) {
+                qError("DataSubscriber: DjiFcSubscription_DeInit return {:#x}!", result);
+            }
+            qInfo("DataSubscriber: DeInit!");
+        }
+    };
+
+    object::ptr psdk_register;
+    register2::ptr _register;
+    std::future<void> future;
+    std::atomic_bool exit{false};
+    std::mutex mutex;
+    self::data data;
+
+    impl(object::ptr const& psdk_register) {
+        impl::psdk_register = psdk_register;
+        _register = std::make_shared<register2>();
+    }
+
+    ~impl() {
+        if (future.valid()) {
+            exit = true;
+            future.wait();
+        }
+    }
+};
+
+};  // namespace __data_subcriber__
+
+int32_t data_subcriber::init(object::ptr const& _register) {
+    int32_t result{0};
+
+    do {
+        auto impl = std::make_shared<__data_subcriber__::impl>(_register);
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_10_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_STATUS_DISPLAYMODE,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_10_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_VELOCITY,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_1_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_QUATERNION,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_50_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_ALTITUDE_FUSED,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_50_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_GPS_POSITION,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_1_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_RTK_POSITION,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_1_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_POSITION_FUSED,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_50_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        // result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_GPS_DETAILS,
+        //                                           DJI_DATA_SUBSCRIPTION_TOPIC_1_HZ, NULL);
+        // if (0 != result) {
+        //     qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+        //     break;
+        // }
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_COMPASS,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_1_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_BATTERY_INFO,
+                                                  DJI_DATA_SUBSCRIPTION_TOPIC_1_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        impl->future = std::async(
+            std::launch::async,
+            [](__data_subcriber__::impl* impl) {
+                int32_t result{0};
+                T_DjiDataTimestamp timestamp{0};
+                self::data data;
+                while (!impl->exit) {
+                    qTrace("FcDataSubcriber Running!");
+
+                    {
+                        T_DjiFcSubscriptionFlightStatus flight_status{0u};
+                        result = DjiFcSubscription_GetLatestValueOfTopic(
+                            DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT, &flight_status,
+                            sizeof(flight_status), &timestamp);
+                        if (DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS == result) {
+                            data.status = flight_status;
+                        }
+                    }
+
+                    {
+                        T_DjiFcSubscriptionDisplaymode display_mode{0u};
+                        result = DjiFcSubscription_GetLatestValueOfTopic(
+                            DJI_FC_SUBSCRIPTION_TOPIC_STATUS_DISPLAYMODE, &display_mode,
+                            sizeof(display_mode), &timestamp);
+                        if (DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS == result) {
+                            data.mode = display_mode;
+                        }
+                    }
+
+                    {
+                        T_DjiFcSubscriptionVelocity velocity{0u};
+                        result = DjiFcSubscription_GetLatestValueOfTopic(
+                            DJI_FC_SUBSCRIPTION_TOPIC_VELOCITY,
+                            reinterpret_cast<uint8_t*>(&velocity), sizeof(velocity), &timestamp);
+                        if (DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS == result) {
+                            data.velocity[0] = velocity.data.x;
+                            data.velocity[1] = velocity.data.y;
+                            data.velocity[2] = velocity.data.z;
+                        }
+                    }
+
+                    {
+                        T_DjiFcSubscriptionQuaternion quaternion{0u};
+                        result = DjiFcSubscription_GetLatestValueOfTopic(
+                            DJI_FC_SUBSCRIPTION_TOPIC_QUATERNION,
+                            reinterpret_cast<uint8_t*>(&quaternion), sizeof(quaternion),
+                            &timestamp);
+                        if (DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS == result) {
+                            float64_t pitch = asinf(-2 * quaternion.q1 * quaternion.q3 +
+                                                    2 * quaternion.q0 * quaternion.q2) *
+                                57.3;
+                            float64_t roll = atan2f(2 * quaternion.q2 * quaternion.q3 +
+                                                        2 * quaternion.q0 * quaternion.q1,
+                                                    -2 * quaternion.q1 * quaternion.q1 -
+                                                        2 * quaternion.q2 * quaternion.q2 + 1) *
+                                57.3;
+                            float64_t yaw = atan2f(2 * quaternion.q1 * quaternion.q2 +
+                                                       2 * quaternion.q0 * quaternion.q3,
+                                                   -2 * quaternion.q2 * quaternion.q2 -
+                                                       2 * quaternion.q3 * quaternion.q3 + 1) *
+                                57.3;
+                            data.euler_angles[0] = pitch;
+                            data.euler_angles[1] = pitch;
+                            data.euler_angles[2] = yaw;
+                        }
+                    }
+
+                    {
+                        T_DjiFcSubscriptionAltitudeFused altitude_fused;
+                        result = DjiFcSubscription_GetLatestValueOfTopic(
+                            DJI_FC_SUBSCRIPTION_TOPIC_ALTITUDE_FUSED,
+                            reinterpret_cast<uint8_t*>(&altitude_fused), sizeof(altitude_fused),
+                            &timestamp);
+                        if (DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS == result) {
+                            data.altitude = altitude_fused;
+                        }
+                    }
+
+                    // {
+                    //     T_DjiFcSubscriptionGpsPosition position;
+                    //     result = DjiFcSubscription_GetLatestValueOfTopic(
+                    //         DJI_FC_SUBSCRIPTION_TOPIC_GPS_POSITION, (uint8_t*)&position,
+                    //         sizeof(T_DjiFcSubscriptionGpsPosition), &timestamp);
+                    //     if (result == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                    //         float64_t longitude = position.x * 1e-7;
+                    //         float64_t latitude = position.y * 1e-7;
+                    //         float64_t altitude = position.z * 1e-3;
+                    //         qTrace("GPS Position is {},{},{}!", longitude, latitude, altitude);
+                    //     }
+                    // }
+
+                    // {
+                    //     T_DjiFcSubscriptionRtkPosition rtk_position;
+                    //     result = DjiFcSubscription_GetLatestValueOfTopic(
+                    //         DJI_FC_SUBSCRIPTION_TOPIC_RTK_POSITION, (uint8_t*)&rtk_position,
+                    //         sizeof(T_DjiFcSubscriptionRtkPosition), &timestamp);
+                    //     if (result == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                    //         qTrace("RTK Position is {},{},{}!", rtk_position.longitude,
+                    //                rtk_position.latitude, rtk_position.hfsl);
+                    //     }
+                    // }
+
+                    {
+                        T_DjiFcSubscriptionPositionFused position;
+                        result = DjiFcSubscription_GetLatestValueOfTopic(
+                            DJI_FC_SUBSCRIPTION_TOPIC_POSITION_FUSED, (uint8_t*)&position,
+                            sizeof(T_DjiFcSubscriptionPositionFused), &timestamp);
+                        if (result == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                            data.position[0] = position.longitude * 180 / M_PI;
+                            data.position[1] = position.latitude * 180 / M_PI;
+                            data.position[2] = position.altitude;
+                            data.number_of_satellites = position.visibleSatelliteNumber;
+                            // qTrace("Fused Position is {},{},{},{}!", data.position[0],
+                            //        data.position[1], data.position[2],
+                            //        data.number_of_satellites);
+                        }
+                    }
+
+                    // {
+                    //     T_DjiFcSubscriptionGpsDetails gps_details;
+                    //     result = DjiFcSubscription_GetLatestValueOfTopic(
+                    //         DJI_FC_SUBSCRIPTION_TOPIC_GPS_DETAILS, (uint8_t*)&gps_details,
+                    //         sizeof(T_DjiFcSubscriptionGpsDetails), &timestamp);
+                    //     if (result == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                    //         data.number_of_satellites = gps_details.totalSatelliteNumberUsed;
+                    //     }
+                    // }
+
+                    {
+                        T_DjiFcSubscriptionCompass compass;
+                        result = DjiFcSubscription_GetLatestValueOfTopic(
+                            DJI_FC_SUBSCRIPTION_TOPIC_COMPASS, (uint8_t*)&compass,
+                            sizeof(T_DjiFcSubscriptionCompass), &timestamp);
+                        if (result == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                            data.compass[0] = compass.x;
+                            data.compass[1] = compass.y;
+                            data.compass[2] = compass.z;
+                        }
+                    }
+
+                    {
+                        T_DjiFcSubscriptionWholeBatteryInfo battery;
+                        result = DjiFcSubscription_GetLatestValueOfTopic(
+                            DJI_FC_SUBSCRIPTION_TOPIC_BATTERY_INFO, (uint8_t*)&battery,
+                            sizeof(T_DjiFcSubscriptionWholeBatteryInfo), &timestamp);
+                        if (result == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                            data.battery[0] = battery.capacity;
+                            data.battery[1] = battery.voltage;
+                            data.battery[2] = battery.percentage;
+                        }
+                    }
+
+                    {
+                        std::lock_guard<std::mutex> lock(impl->mutex);
+                        impl->data = data;
+                    }
+
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+            },
+            impl.get());
+
+        self::impl = impl;
+    } while (false);
+
+    return result;
+}
+
+data_subcriber::data data_subcriber::get() const {
+    data_subcriber::data result;
+
+    do {
+        auto impl = std::dynamic_pointer_cast<__data_subcriber__::impl>(self::impl);
+        if (impl == nullptr) {
+            qError("DataSubscriber: impl is nullptr!");
+            break;
+        }
+
+        std::lock_guard<std::mutex> lock(impl->mutex);
+        result = impl->data;
     } while (false);
 
     return result;

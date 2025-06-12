@@ -13,25 +13,6 @@
 #endif
 #include "spdlog/spdlog.h"
 
-#ifdef ARGPARSE_IMPLEMENTATION
-template <>
-spdlog::level::level_enum argparse::ArgumentParser::get<spdlog::level::level_enum>(
-    std::string_view arg_name) const {
-    THROW_EXCEPTION(m_is_parsed, "Nothing parsed, no arguments are available.");
-
-    spdlog::level::level_enum value{spdlog::level::n_levels};
-    try {
-        value = (*this)[arg_name].get<spdlog::level::level_enum>();
-    } catch (std::bad_any_cast const&) {
-        value = static_cast<spdlog::level::level_enum>((*this)[arg_name].get<size_t>());
-    }
-    THROW_EXCEPTION(value <= spdlog::level::n_levels, "value({}) must be less than {}!", value,
-                    spdlog::level::n_levels);
-
-    return value;
-}
-#endif
-
 #ifdef DJI_TYPEDEF_H
 template <>
 struct fmt::formatter<T_DjiVector3d> : public fmt::formatter<std::string> {
@@ -161,24 +142,6 @@ struct fmt::formatter<std::pair<T1, T2>> : fmt::formatter<std::string> {
     auto format(std::pair<T1, T2> const& value, format_context& ctx) const {
         return fmt::formatter<std::string>::format(
             fmt::format("[{},{}]", value.first, value.second), ctx);
-    }
-};
-#endif
-
-#ifdef _GLIBCXX_ARRAY
-template <class T, size_t N>
-struct fmt::formatter<std::array<T, N>> : fmt::formatter<std::string> {
-    auto format(std::array<T, N> const& vector, format_context& ctx) const {
-        std::stringstream out;
-        out << "[";
-        for (auto i = 0u; i < vector.size() - 1; ++i) {
-            out << fmt::format("{},", vector[i]);
-        }
-        if (vector.size() > 0) {
-            out << fmt::format("{}", vector.back());
-        }
-        out << "]";
-        return fmt::formatter<std::string>::format(out.str(), ctx);
     }
 };
 #endif
@@ -315,4 +278,23 @@ public:
 };
 
 };  // namespace logger
+
+#ifdef ARGPARSE_IMPLEMENTATION
+namespace argparse {
+
+template <>
+struct convert<logger::level> : public object {
+    static logger::level call(std::string_view s) {
+        logger::level value{logger::level::n_levels};
+        value = static_cast<logger::level>(convert<size_t>::call(s));
+        THROW_EXCEPTION(value <= logger::level::n_levels, "value({}) must be less than {}!", value,
+                        logger::level::n_levels);
+
+        return value;
+    }
+};
+
+};  // namespace argparse
+#endif
+
 };  // namespace qlib

@@ -26,7 +26,7 @@ protected:
     }
 
     template <class Callback>
-    static bool parse_args(argparse::ArgumentParser* parser,
+    static bool parse_args(argparse::parser* parser,
                            int argc,
                            char* argv[],
                            Callback&& add_argument) {
@@ -35,10 +35,10 @@ protected:
         add_argument(parser);
 
         try {
-            parser->parse_args(argc, argv);
+            parser->parse_args(argv, argv + argc);
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
-            std::cout << *parser << std::endl;
+            std::cout << parser->help() << std::endl;
             ok = false;
         }
 
