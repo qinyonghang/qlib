@@ -103,18 +103,24 @@ struct fmt::formatter<T, Char, std::void_t<decltype(std::decay_t<T>().to_string(
 };
 
 template <class T>
-struct fmt::formatter<std::vector<T>> : public fmt::formatter<std::string> {
-    auto format(std::vector<T> const& vector, format_context& ctx) const {
-        std::stringstream out;
-        out << "[";
-        for (auto i = 0u; i < vector.size() - 1; ++i) {
-            out << fmt::format("{},", vector[i]);
+struct fmt::formatter<std::vector<T>> : fmt::formatter<std::string> {
+    template <typename FormatContext>
+    auto format(const std::vector<T>& vector, FormatContext& ctx) const {
+        auto out = ctx.out();
+
+        *out++ = '[';
+
+        if (!vector.empty()) {
+            out = fmt::format_to(out, "{}", vector[0]);
+
+            for (size_t i = 1; i < vector.size(); ++i) {
+                *out++ = ',';
+                out = fmt::format_to(out, "{}", vector[i]);
+            }
         }
-        if (vector.size() > 0) {
-            out << fmt::format("{}", vector.back());
-        }
-        out << "]";
-        return fmt::formatter<std::string>::format(out.str(), ctx);
+
+        *out++ = ']';
+        return out;
     }
 };
 
@@ -122,16 +128,18 @@ struct fmt::formatter<std::vector<T>> : public fmt::formatter<std::string> {
 template <class T, size_t N>
 struct fmt::formatter<std::array<T, N>> : fmt::formatter<std::string> {
     auto format(std::array<T, N> const& vector, format_context& ctx) const {
-        std::stringstream out;
-        out << "[";
-        for (auto i = 0u; i < vector.size() - 1; ++i) {
-            out << fmt::format("{},", vector[i]);
+        auto out = ctx.out();
+        *out++ = '[';
+        if (!vector.empty()) {
+            out = fmt::format_to(out, "{}", vector[0]);
+
+            for (size_t i = 1; i < vector.size(); ++i) {
+                *out++ = ',';
+                out = fmt::format_to(out, "{}", vector[i]);
+            }
         }
-        if (vector.size() > 0) {
-            out << fmt::format("{}", vector.back());
-        }
-        out << "]";
-        return fmt::formatter<std::string>::format(out.str(), ctx);
+        *out++ = ']';
+        return out;
     }
 };
 #endif

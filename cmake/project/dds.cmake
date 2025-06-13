@@ -1,3 +1,7 @@
+if (NOT DEFINED DDS_INCLUDE_CMAKE)
+
+set(DDS_INCLUDE_CMAKE 1)
+
 include(${ROOT_DIR}/cmake/find_thirdparty.cmake)
 
 find_thirdparty(foonathan_memory
@@ -57,4 +61,10 @@ target_include_directories(qlib_dds PUBLIC
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 
-target_link_libraries(qlib_dds PUBLIC fastcdr foonathan_memory fastdds)
+target_link_libraries(qlib_dds PRIVATE fastcdr foonathan_memory fastdds)
+
+include(${ROOT_DIR}/cmake/project/logger.cmake)
+
+target_link_libraries(qlib_dds PUBLIC qlib::logger)
+
+endif()
