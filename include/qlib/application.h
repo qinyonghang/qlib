@@ -25,17 +25,11 @@ protected:
         signal(SIGINT, +[](int signal) { self::exit = true; });
     }
 
-    template <class Callback>
-    static bool parse_args(argparse::parser* parser,
-                           int argc,
-                           char* argv[],
-                           Callback&& add_argument) {
+    static bool parse_args(argparse::parser* parser, int argc, char* argv[]) {
         bool ok{true};
 
-        add_argument(parser);
-
         try {
-            parser->parse_args(argv, argv + argc);
+            parser->parse_args(argv + 1, argv + argc);
         } catch (std::exception const& e) {
             std::cout << e.what() << std::endl;
             std::cout << parser->help() << std::endl;

@@ -10,7 +10,7 @@ if (BUILD_TEST)
     include(${ROOT_DIR}/cmake/project/dds.cmake)
     include(${ROOT_DIR}/cmake/project/ffmpeg.cmake)
 
-    set(out_dir ${CMAKE_CURRENT_BINARY_DIR}/tests)
+    set(out_dir ${CMAKE_CURRENT_BINARY_DIR})
     file(GLOB tests ${PROJECT_SOURCE_DIR}/tests/*.cpp)
     foreach(test IN LISTS tests)
         get_filename_component(test_name ${test} NAME_WE)

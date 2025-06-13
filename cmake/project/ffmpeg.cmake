@@ -26,7 +26,7 @@ compile(lzma
 if (CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 set(compile_cmd "./configure --prefix=${INSTALL_DIR} --enable-static --host=aarch64-linux-gnu --cross-prefix=aarch64-linux-gnu- --disable-opencl --enable-pic --disable-asm")
 else()
-set(compile_cmd "./configure --prefix=${INSTALL_DIR} --enable-static")
+set(compile_cmd "./configure --prefix=${INSTALL_DIR} --enable-static --disable-asm")
 endif()
 
 compile(x264
@@ -48,7 +48,7 @@ compile(x264
 if (CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
 set(compile_cmd "./configure --prefix=${INSTALL_DIR} --disable-asm --disable-shared --enable-static --enable-libx264 --enable-gpl --cross-prefix=aarch64-linux-gnu- --enable-cross-compile --arch=aarch64  --target-os=linux --extra-ldflags=\"-L ../x264/install2/linux/lib\" --extra-cflags=\"-I ../x264/install2/linux/include\" --extra-ldflags=\"-L ../lzma/install2/linux/lib\" --extra-cflags=\"-I ../lzma/install2/linux/include\"")
 else()
-set(compile_cmd "./configure --prefix=${INSTALL_DIR} --disable-shared --enable-static --enable-libx264 --enable-gpl --extra-ldflags=\"-L ../x264/install2/linux/lib\" --extra-cflags=\"-I ../x264/install2/linux/include\"")
+set(compile_cmd "./configure --prefix=${INSTALL_DIR} --disable-asm --disable-shared --enable-static --enable-libx264 --enable-gpl --extra-ldflags=\"-L ../x264/install2/linux/lib\" --extra-cflags=\"-I ../x264/install2/linux/include\" --extra-ldflags=\"-L ../lzma/install2/linux/lib\" --extra-cflags=\"-I ../lzma/install2/linux/include\"")
 endif()
 
 compile(ffmpeg

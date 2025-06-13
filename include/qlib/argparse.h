@@ -4,11 +4,8 @@
 
 #include <any>
 #include <charconv>
-#include <limits>
-#include <sstream>
 #include <vector>
 
-// #include "argparse/argparse.hpp"
 #include "qlib/exception.h"
 #include "qlib/object.h"
 
@@ -40,7 +37,7 @@ struct convert<bool_t> : public object {
         } else if (s == "false" || s == "False") {
             result = False;
         } else {
-            THROW_EXCEPTION(False, "value({}) is invalid bool!", s.data());
+            THROW_EXCEPTION(False, "Value({}) is Invalid Bool!", s.data());
         }
 
         return result;
@@ -60,22 +57,27 @@ class convert<T,
 public:
     static T call(std::string_view s) {
         T result;
-        auto res = std::from_chars(s.data(), s.data() + s.size(), result);
-        THROW_EXCEPTION(res.ec == std::errc{}, "value({}) is invalid {}!", s.data(),
-                        typeid(T).name());
+        auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), result);
+        THROW_EXCEPTION(ec == std::errc{} && ptr != nullptr && *ptr == '\0',
+                        "Value({}) is Invalid {}! Err={}!", s.data(), typeid(T).name(),
+                        static_cast<int32_t>(ec));
         return result;
     }
 };
 
-// template <class T, class = std::enable_if_t<std::is_same_v<std::decay_t<T>, int8_t, int16_t, int32_t, int64_t>>>
-// T convert<T>::call(std::string_view value) {
-
-// }
-
 class argument final : public object {
 public:
+    using base = object;
+    using self = argument;
+    using ptr = sptr<self>;
+
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        return std::make_shared<self>(std::forward<Args>(args)...);
+    }
+
     template <class String>
-    argument(String&& name = "default") : _name{std::forward<String&&>(name)} {}
+    argument(String&& name = "default") : _name{std::forward<String>(name)} {}
 
     template <class String, class T, class String2>
     argument(String name, T&& default_value, String2&& help = "")
@@ -104,12 +106,11 @@ public:
     T get() const {
         std::any any;
         if (_value.empty()) {
-            THROW_EXCEPTION(_default_value.has_value(), "Argument({}) is not set.", _name);
             any = _default_value;
         } else {
             any = convert<T>::call(_value);
         }
-        return std::any_cast<T>(_default_value);
+        return std::any_cast<T>(any);
     }
 
     template <class... Args>
@@ -118,9 +119,7 @@ public:
         return *this;
     }
 
-    static bool_t is_positional(std::string_view name) noexcept {
-        return std::memcmp(name.data(), "--", 2) != 0;
-    }
+    bool has_value() const noexcept { return _default_value.has_value() || (!_value.empty()); }
 
 protected:
     string_t _name;
@@ -135,101 +134,106 @@ public:
     using ptr = sptr<self>;
     using base = object;
 
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        return std::make_shared<self>(std::forward<Args>(args)...);
+    }
+
     template <class String>
     parser(String name) noexcept : _name{std::forward<String>(name)} {}
 
     template <class... Args>
-    argument& add_argument(Args&&... args) noexcept {
-        self::arguments.emplace_back(std::forward<Args>(args)...);
-        return self::arguments.back();
+    argument& add_argument(std::string_view const& name, Args&&... args) noexcept {
+        argument::ptr arg;
+
+        if (starts_with(name, "--")) {
+            arg = argument::make(name.data() + 2, std::forward<Args>(args)...);
+            self::optional_arguments.emplace_back(arg);
+        } else if (starts_with(name, "-")) {
+            arg = argument::make(name.data() + 1, std::forward<Args>(args)...);
+            self::optional_arguments.emplace_back(arg);
+        } else {
+            arg = argument::make(name, std::forward<Args>(args)...);
+            self::positional_arguments.emplace_back(arg);
+        }
+
+        return *arg;
     }
 
     template <typename T>
     T get(std::string_view name) {
-        for (auto& it : self::arguments) {
-            if (it.name() == name || it.name() == fmt::format("--{}", name)) {
-                return it.get<T>();
-            }
+        string_t _name;
+        if (starts_with(name, "--")) {
+            _name = name.data() + 2;
+        } else if (starts_with(name, "-")) {
+            _name = name.data() + 1;
+        } else {
+            _name = name;
         }
 
-        THROW_EXCEPTION(false, "Argument({}) not found", name);
+        argument::ptr arg{nullptr};
+        arg = find(self::positional_arguments, _name);
+        if (arg == nullptr) {
+            arg = find(self::optional_arguments, _name);
+        }
+        THROW_EXCEPTION(arg != nullptr, "Argument({}) not Found!", name);
+
+        return arg->get<T>();
     }
 
     template <class It1, class It2>
     void parse_args(It1 const& begin, It2 const& end) {
-        bool_t position{True};
-        size_t i{0u};
-        for (auto it = begin; it != end; ++it, ++i) {
-            if (position) {
-                if (argument::is_positional(*it) &&
-                    argument::is_positional(self::arguments[i].name())) {
-                    self::arguments[i].parse(*it);
-                } else {
-                    position = False;
-                }
-            }
-
-            if (!position) {
-                THROW_EXCEPTION(!argument::is_positional(*it), "Unknown Argument: {}", *it);
-                for (auto& argument : arguments) {
-                    if (argument.name() == *it) {
-                        THROW_EXCEPTION(it + 1 != end, "Missing Value at Argument: {}", *it);
-                        ++it;
-                        argument.parse(*it);
-                        break;
-                    }
-                }
-            }
+        auto it = begin;
+        for (auto& arg : self::positional_arguments) {
+            THROW_EXCEPTION(it != end, "Argument({}) not Found!", arg->name());
+            arg->parse(*it);
+            ++it;
         }
-    }
 
-    string_t help() const noexcept {
-        std::stringstream out;
-
-        out << "usage: " << self::_name << " ";
-        std::vector<argument const*> positional_arguments;
-        std::vector<argument const*> optional_arguments;
-        for (auto const& it : self::arguments) {
-            if (argument::is_positional(it.name())) {
-                positional_arguments.emplace_back(&it);
+        for (; it != end; ++it) {
+            argument::ptr arg{nullptr};
+            if (starts_with(*it, "--")) {
+                arg = find(self::optional_arguments, *it + 2);
+            } else if (starts_with(*it, "-")) {
+                arg = find(self::optional_arguments, *it + 1);
             } else {
-                optional_arguments.emplace_back(&it);
+                THROW_EXCEPTION(False, "Unknown Argument: {}", *it);
             }
+            THROW_EXCEPTION(arg != nullptr, "Unknown Argument: {}", *it);
+            THROW_EXCEPTION(it + 1 != end, "Missing Value at Argument: {}", *it);
+            arg->parse(*++it);
         }
 
-        for (auto const& it : optional_arguments) {
-            out << "[" << it->name() << "] ";
+        for (auto& arg : self::optional_arguments) {
+            THROW_EXCEPTION(arg->has_value(), "Missing Value at Argument: {}", arg->name());
         }
-
-        for (auto const& it : positional_arguments) {
-            out << it->name() << " ";
-        }
-        out << std::endl;
-
-        out << std::endl << "positional arguments:" << std::endl;
-        for (auto const& it : positional_arguments) {
-            out << "  " << it->name();
-            if (!it->help().empty()) {
-                out << "\t\t\t" << it->help();
-            }
-            out << std::endl;
-        }
-        out << std::endl << "optional arguments:" << std::endl;
-        for (auto const& it : optional_arguments) {
-            out << "  " << it->name();
-            if (!it->help().empty()) {
-                out << "\t\t\t" << it->help();
-            }
-            out << std::endl;
-        }
-        out << std::endl;
-
-        return out.str();
     }
+
+    string_t help() const noexcept;
 
 protected:
     string_t _name;
-    std::vector<argument> arguments;
+    std::vector<argument::ptr> positional_arguments;
+    std::vector<argument::ptr> optional_arguments;
+
+    static bool_t starts_with(std::string_view s, std::string_view prefix) {
+        return s.size() >= prefix.size() && std::equal(prefix.begin(), prefix.end(), s.begin());
+    }
+
+    static bool_t ends_with(std::string_view s, std::string_view suffix) {
+        return s.size() >= suffix.size() && std::equal(suffix.rbegin(), suffix.rend(), s.rbegin());
+    }
+
+    static argument::ptr find(std::vector<argument::ptr> const& args, std::string_view name) {
+        argument::ptr result{nullptr};
+        for (auto& arg : args) {
+            if (arg->name() == name) {
+                result = arg;
+                break;
+            }
+        }
+        return result;
+    }
 };
 };  // namespace argparse
 };  // namespace qlib

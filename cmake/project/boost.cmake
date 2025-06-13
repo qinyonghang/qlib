@@ -1,4 +1,8 @@
 
+if (NOT DEFINED BOOST_INCLUDE_CMAKE)
+
+set(BOOST_INCLUDE_CMAKE 1)
+
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 set(arch "64")
 else()
@@ -54,3 +58,5 @@ add_library(qlib::boost ALIAS boost)
 
 target_compile_definitions(boost PUBLIC BOOST_PYTHON_STATIC_LIB)
 target_link_libraries(boost PUBLIC ${Boost_LIBRARIES})
+
+endif()
