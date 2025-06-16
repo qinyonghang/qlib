@@ -42,12 +42,12 @@ public:
     }
 
     template <class _T, class... Args>
-    static _T get(Args&&... args) {
+    static inline _T get(Args&&... args) {
         return Loader::template get<_T>(std::forward<Args>(args)...);
     }
 
     template <class _T, class... Args>
-    static void get(_T* value_ptr, Args&&... args) {
+    static inline void get(_T* value_ptr, Args&&... args) {
         *value_ptr = get<_T>(std::forward<Args>(args)...);
     }
 };

@@ -1,5 +1,7 @@
 #pragma once
 
+#define LOGGER_IMPLEMENTATION
+
 #include <filesystem>
 #include <vector>
 
@@ -199,6 +201,12 @@ public:
 
     self& console(bool console = true, level level = level::info) {
         self::_console = console;
+        self::_console_level = level;
+        return *this;
+    }
+
+    self& console(level level = level::info) {
+        self::_console = (level != level::off);
         self::_console_level = level;
         return *this;
     }

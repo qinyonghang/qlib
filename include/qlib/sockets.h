@@ -109,44 +109,50 @@ public:
         return result;
     }
 
-    int32_t send(void const* buf, size_t len, uint32_t timeout = 0) {
-        int32_t result{0};
-
-        do {
-            if (socket_fd < 0) {
-                result = -1;
-                break;
-            }
-
-            if (timeout > 0) {
-                struct timeval tv{};
-                tv.tv_sec = timeout;
-                tv.tv_usec = 0;
-                ::setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-            }
-
-            size_t total{0u};
-            while (total < len) {
-                auto cur = ::send(socket_fd, static_cast<uint8_t const*>(buf) + total, len - total,
-                                  MSG_NOSIGNAL);
-                if (cur <= 0) {
-                    if (errno == EAGAIN || errno == EINTR) {
-                        continue;
-                    } else if (errno == EPIPE || errno == ECONNRESET) {
-                        ::close(socket_fd);
-                        socket_fd = -1;
-                    } else {
-                        break;
-                    }
-                }
-                total += static_cast<size_t>(cur);
-            }
-
-            result = static_cast<int32_t>(total);
-        } while (false);
-
-        return result;
+    int32_t option(int32_t name, void const* value, size_t len) {
+        return ::setsockopt(socket_fd, SOL_SOCKET, name, value, len);
     }
+
+    int32_t send(void const* buf, size_t len) { return ::send(socket_fd, buf, len, MSG_NOSIGNAL); }
+
+    // int32_t send(void const* buf, size_t len, uint32_t timeout = 0) {
+    //     int32_t result{0};
+
+    //     do {
+    //         if (socket_fd < 0) {
+    //             result = -1;
+    //             break;
+    //         }
+
+    //         if (timeout > 0) {
+    //             struct timeval tv{};
+    //             tv.tv_sec = timeout;
+    //             tv.tv_usec = 0;
+    //             ::setsockopt(socket_fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+    //         }
+
+    //         size_t total{0u};
+    //         while (total < len) {
+    //             auto cur = ::send(socket_fd, static_cast<uint8_t const*>(buf) + total, len - total,
+    //                               MSG_NOSIGNAL);
+    //             if (cur <= 0) {
+    //                 if (errno == EAGAIN || errno == EINTR) {
+    //                     continue;
+    //                 } else if (errno == EPIPE || errno == ECONNRESET) {
+    //                     ::close(socket_fd);
+    //                     socket_fd = -1;
+    //                 } else {
+    //                     break;
+    //                 }
+    //             }
+    //             total += static_cast<size_t>(cur);
+    //         }
+
+    //         result = static_cast<int32_t>(total);
+    //     } while (false);
+
+    //     return result;
+    // }
 
     int32_t recv(void* buf, size_t len, uint32_t timeout = 0) {
         int32_t result{0};
