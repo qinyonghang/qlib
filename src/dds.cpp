@@ -20,7 +20,10 @@
 #include "tinyxml2.h"
 
 namespace qlib {
+
 namespace dds {
+
+using namespace eprosima::fastdds::dds;
 
 void __attribute__((used)) force_link_deps(void) {
     auto error = tinyxml2::XMLDocument::ErrorIDToName(tinyxml2::XML_SUCCESS);
@@ -32,22 +35,6 @@ void __attribute__((used)) force_link_deps(void) {
     auto handler = foonathan::memory::out_of_memory::get_handler();
     std::cout << reinterpret_cast<void*>(&handler) << std::endl;
 }
-
-void (*g_dds)(void) = force_link_deps;
-};  // namespace dds
-};  // namespace qlib
-
-namespace qlib {
-
-namespace dds {
-
-using namespace eprosima::fastdds::dds;
-
-auto register2 = []() {
-    extern void (*g_dds)(void);
-    THROW_EXCEPTION(g_dds, "g_dds is nullptr... ");
-    return true;
-}();
 
 template <class Builder>
 static DynamicType::_ref_type create(Builder&& builder) {
@@ -66,171 +53,106 @@ static DynamicType::_ref_type create(Builder&& builder) {
     return struct_builder->build();
 }
 
-struct convert : public object {
-    static DynamicType::_ref_type make_type_ptr(type::ptr const& type) {
-        DynamicType::_ref_type result{nullptr};
+template <>
+struct convert<string_t> : public object {
+    using value_type = string_t;
 
-        if (type->value.type() == typeid(string_t)) {
-            result = create([](DynamicTypeBuilderFactory::_ref_type type_factory) {
-                return type_factory->create_string_type(static_cast<uint32_t>(LENGTH_UNLIMITED))
-                    ->build();
-            });
-        }
-
-#define REGISTER_PRIMITIVE_TYPE(T, TK_ENUM)                                                        \
-    else if (type->value.type() == typeid(T)) {                                                    \
-        result = create([](DynamicTypeBuilderFactory::_ref_type type_factory) {                    \
-            return type_factory->get_primitive_type(TK_ENUM);                                      \
-        });                                                                                        \
+    static DynamicType::_ref_type make_type_ptr() {
+        return create([](DynamicTypeBuilderFactory::_ref_type type_factory) {
+            return type_factory->create_string_type(static_cast<uint32_t>(LENGTH_UNLIMITED))
+                ->build();
+        });
     }
 
-        REGISTER_PRIMITIVE_TYPE(int8_t, TK_INT8)
-        REGISTER_PRIMITIVE_TYPE(int16_t, TK_INT16)
-        REGISTER_PRIMITIVE_TYPE(int32_t, TK_INT32)
-        REGISTER_PRIMITIVE_TYPE(int64_t, TK_INT64)
-        REGISTER_PRIMITIVE_TYPE(uint8_t, TK_UINT8)
-        REGISTER_PRIMITIVE_TYPE(uint16_t, TK_UINT16)
-        REGISTER_PRIMITIVE_TYPE(uint32_t, TK_UINT32)
-        REGISTER_PRIMITIVE_TYPE(uint64_t, TK_UINT64)
-
-#undef REGISTER_PRIMITIVE_TYPE
-
-#define REGISTER_VECTOR_TYPE(T, TK_ENUM)                                                           \
-    else if (type->value.type() == typeid(std::vector<T>)) {                                       \
-        result = create([](DynamicTypeBuilderFactory::_ref_type type_factory) {                    \
-            return type_factory                                                                    \
-                ->create_sequence_type(type_factory->get_primitive_type(TK_ENUM),                  \
-                                       static_cast<uint32_t>(LENGTH_UNLIMITED))                    \
-                ->build();                                                                         \
-        });                                                                                        \
-    }
-
-        REGISTER_VECTOR_TYPE(int8_t, TK_INT8)
-        REGISTER_VECTOR_TYPE(int16_t, TK_INT16)
-        REGISTER_VECTOR_TYPE(int32_t, TK_INT32)
-        REGISTER_VECTOR_TYPE(int64_t, TK_INT64)
-        REGISTER_VECTOR_TYPE(uint8_t, TK_UINT8)
-        REGISTER_VECTOR_TYPE(uint16_t, TK_UINT16)
-        REGISTER_VECTOR_TYPE(uint32_t, TK_UINT32)
-        REGISTER_VECTOR_TYPE(uint64_t, TK_UINT64)
-
-#undef REGISTER_VECTOR_TYPE
-
-        THROW_EXCEPTION(result != nullptr, "type not found!");
-        return result;
-    }
-
-    static DynamicData::_ref_type make_data_ptr(type::ptr const& type) {
+    static DynamicData::_ref_type make_data_ptr() {
         auto data_factory = DynamicDataFactory::get_instance();
-        return data_factory->create_data(make_type_ptr(type));
+        return data_factory->create_data(make_type_ptr());
     }
 
-    static void set(DynamicData::_ref_type* data_ptr, type::ptr const& type) {
-        if (type->value.type() == typeid(string_t)) {
-            (*data_ptr)->set_string_value(0u, std::any_cast<string_t>(type->value));
-        }
-
-#define HANDLE_PRIMITIVE_TYPE(T, SETTER)                                                           \
-    else if (type->value.type() == typeid(T)) {                                                    \
-        (*data_ptr)->SETTER(0u, std::any_cast<T>(type->value));                                    \
+    static void set(DynamicData::_ref_type* data_ptr, value_type const& value) {
+        (*data_ptr)->set_string_value(0u, value);
     }
 
-        HANDLE_PRIMITIVE_TYPE(int8_t, set_int8_value)
-        HANDLE_PRIMITIVE_TYPE(int16_t, set_int16_value)
-        HANDLE_PRIMITIVE_TYPE(int32_t, set_int32_value)
-        HANDLE_PRIMITIVE_TYPE(int64_t, set_int64_value)
-
-        HANDLE_PRIMITIVE_TYPE(uint8_t, set_uint8_value)
-        HANDLE_PRIMITIVE_TYPE(uint16_t, set_uint16_value)
-        HANDLE_PRIMITIVE_TYPE(uint32_t, set_uint32_value)
-        HANDLE_PRIMITIVE_TYPE(uint64_t, set_uint64_value)
-
-#undef HANDLE_PRIMITIVE_TYPE
-
-#define HANDLE_VECTOR_TYPE(T, SETTER)                                                              \
-    else if (type->value.type() == typeid(std::vector<T>)) {                                       \
-        (*data_ptr)->SETTER(0u, std::any_cast<std::vector<T>>(type->value));                       \
-    }
-
-        HANDLE_VECTOR_TYPE(int8_t, set_int8_values)
-        HANDLE_VECTOR_TYPE(int16_t, set_int16_values)
-        HANDLE_VECTOR_TYPE(int32_t, set_int32_values)
-        HANDLE_VECTOR_TYPE(int64_t, set_int64_values)
-
-        HANDLE_VECTOR_TYPE(uint8_t, set_uint8_values)
-        HANDLE_VECTOR_TYPE(uint16_t, set_uint16_values)
-        HANDLE_VECTOR_TYPE(uint32_t, set_uint32_values)
-        HANDLE_VECTOR_TYPE(uint64_t, set_uint64_values)
-
-#undef HANDLE_VECTOR_TYPE
-
-        else {
-            THROW_EXCEPTION(False, "type not found!");
-        }
-    }
-
-    static void get(type::ptr* type, DynamicData::_ref_type const& data_ptr) {
-        auto& value = (*type)->value;
-
-        if (value.type() == typeid(string_t)) {
-            string_t str;
-            data_ptr->get_string_value(str, 0u);
-            value = str;
-        }
-
-#define HANDLE_PRIMITIVE_GET(T, GETTER)                                                            \
-    else if (value.type() == typeid(T)) {                                                          \
-        T val;                                                                                     \
-        data_ptr->GETTER(val, 0u);                                                                 \
-        value = val;                                                                               \
-    }
-
-        HANDLE_PRIMITIVE_GET(int8_t, get_int8_value)
-        HANDLE_PRIMITIVE_GET(int16_t, get_int16_value)
-        HANDLE_PRIMITIVE_GET(int32_t, get_int32_value)
-        HANDLE_PRIMITIVE_GET(int64_t, get_int64_value)
-
-        HANDLE_PRIMITIVE_GET(uint8_t, get_uint8_value)
-        HANDLE_PRIMITIVE_GET(uint16_t, get_uint16_value)
-        HANDLE_PRIMITIVE_GET(uint32_t, get_uint32_value)
-        HANDLE_PRIMITIVE_GET(uint64_t, get_uint64_value)
-
-#undef HANDLE_PRIMITIVE_GET
-
-#define HANDLE_VECTOR_GET(T, GETTER)                                                               \
-    else if (value.type() == typeid(std::vector<T>)) {                                             \
-        std::vector<T> vec;                                                                        \
-        data_ptr->GETTER(vec, 0u);                                                                 \
-        value = vec;                                                                               \
-    }
-
-        HANDLE_VECTOR_GET(int8_t, get_int8_values)
-        HANDLE_VECTOR_GET(int16_t, get_int16_values)
-        HANDLE_VECTOR_GET(int32_t, get_int32_values)
-        HANDLE_VECTOR_GET(int64_t, get_int64_values)
-
-        HANDLE_VECTOR_GET(uint8_t, get_uint8_values)
-        HANDLE_VECTOR_GET(uint16_t, get_uint16_values)
-        HANDLE_VECTOR_GET(uint32_t, get_uint32_values)
-        HANDLE_VECTOR_GET(uint64_t, get_uint64_values)
-
-#undef HANDLE_VECTOR_GET
-
-        else {
-            THROW_EXCEPTION(false, "unsupported type: {}", value.type().name());
-        }
+    static void get(value_type* value_ptr, DynamicData::_ref_type const& data_ptr) {
+        string_t str;
+        data_ptr->get_string_value(str, 0u);
+        *value_ptr = std::move(str);
     }
 };
+
+#define REGISTER_TYPE(T, TK_ENUM)                                                                  \
+    template <>                                                                                    \
+    struct convert<T##_t> : public object {                                                        \
+        using value_type = T##_t;                                                                  \
+                                                                                                   \
+        static DynamicType::_ref_type make_type_ptr() {                                            \
+            return create([](DynamicTypeBuilderFactory::_ref_type type_factory) {                  \
+                return type_factory->get_primitive_type(TK_ENUM);                                  \
+            });                                                                                    \
+        }                                                                                          \
+                                                                                                   \
+        static DynamicData::_ref_type make_data_ptr() {                                            \
+            auto data_factory = DynamicDataFactory::get_instance();                                \
+            return data_factory->create_data(make_type_ptr());                                     \
+        }                                                                                          \
+                                                                                                   \
+        static void set(DynamicData::_ref_type* data, value_type const& value) {                   \
+            (*data)->set_##T##_value(0u, value);                                                   \
+        }                                                                                          \
+                                                                                                   \
+        static void get(value_type* value, const DynamicData::_ref_type& data) {                   \
+            data->get_##T##_value(*value, 0u);                                                     \
+        }                                                                                          \
+    };                                                                                             \
+    template <>                                                                                    \
+    struct convert<std::vector<T##_t>> : public object {                                           \
+        using value_type = std::vector<T##_t>;                                                     \
+                                                                                                   \
+        static DynamicType::_ref_type make_type_ptr() {                                            \
+            return create([](DynamicTypeBuilderFactory::_ref_type type_factory) {                  \
+                return type_factory                                                                \
+                    ->create_sequence_type(type_factory->get_primitive_type(TK_ENUM),              \
+                                           static_cast<uint32_t>(LENGTH_UNLIMITED))                \
+                    ->build();                                                                     \
+            });                                                                                    \
+        }                                                                                          \
+                                                                                                   \
+        static DynamicData::_ref_type make_data_ptr() {                                            \
+            auto data_factory = DynamicDataFactory::get_instance();                                \
+            return data_factory->create_data(make_type_ptr());                                     \
+        }                                                                                          \
+                                                                                                   \
+        static void set(DynamicData::_ref_type* data, value_type const& value) {                   \
+            (*data)->set_##T##_values(0u, value);                                                  \
+        }                                                                                          \
+                                                                                                   \
+        static void get(value_type* value, const DynamicData::_ref_type& data) {                   \
+            data->get_##T##_values(*value, 0u);                                                    \
+        }                                                                                          \
+    };
+
+REGISTER_TYPE(int8, TK_INT8);
+REGISTER_TYPE(int16, TK_INT16);
+REGISTER_TYPE(int32, TK_INT32);
+REGISTER_TYPE(int64, TK_INT64);
+REGISTER_TYPE(uint8, TK_UINT8);
+REGISTER_TYPE(uint16, TK_UINT16);
+REGISTER_TYPE(uint32, TK_UINT32);
+REGISTER_TYPE(uint64, TK_UINT64);
+REGISTER_TYPE(float32, TK_FLOAT32);
+REGISTER_TYPE(float64, TK_FLOAT64);
+
+#undef REGISTER_TYPE
 
 struct publisher_impl : public object {
     std::unique_ptr<DomainParticipant, std::function<void(DomainParticipant*)>> participant;
     Publisher* publisher;
     Topic* topic;
     DataWriter* writer;
-    dds::type::ptr type_ptr;
 };
 
-int32_t publisher::init(dds::type::ptr const& type_ptr, string_t const& topic) {
+template <class T>
+int32_t publisher::init(string_t const& topic) {
     int32_t result{0};
 
     do {
@@ -247,7 +169,7 @@ int32_t publisher::init(dds::type::ptr const& type_ptr, string_t const& topic) {
                 }
             }};
 
-        auto type = TypeSupport{new DynamicPubSubType{convert::make_type_ptr(type_ptr)}};
+        auto type = TypeSupport{new DynamicPubSubType{convert<T>::make_type_ptr()}};
         result = impl_ptr->participant->register_type(type);
         if (0 != result) {
             result = static_cast<int32_t>(error::unknown);
@@ -285,15 +207,14 @@ int32_t publisher::init(dds::type::ptr const& type_ptr, string_t const& topic) {
             }
         }
 
-        impl_ptr->type_ptr = type_ptr;
-
         self::impl = impl_ptr;
     } while (false);
 
     return result;
 }
 
-int32_t publisher::publish(dds::type::ptr const& type_ptr) {
+template <class T>
+int32_t publisher::publish(T const& value) {
     int32_t result{0};
 
     do {
@@ -303,8 +224,8 @@ int32_t publisher::publish(dds::type::ptr const& type_ptr) {
             break;
         }
 
-        auto data_ptr = convert::make_data_ptr(type_ptr);
-        convert::set(&data_ptr, type_ptr);
+        auto data_ptr = convert<T>::make_data_ptr();
+        convert<T>::set(&data_ptr, value);
         result = impl_ptr->writer->write(&data_ptr);
         if (result != 0) {
             result = static_cast<int32_t>(error::unknown);
@@ -315,6 +236,7 @@ int32_t publisher::publish(dds::type::ptr const& type_ptr) {
     return result;
 }
 
+template <class T>
 struct subscriber_impl : public object {
     class data_listener : public DataReaderListener {
     public:
@@ -324,12 +246,13 @@ struct subscriber_impl : public object {
         subscriber_impl* impl_ptr;
 
         void on_data_available(DataReader* reader) override {
-            auto data_ptr = convert::make_data_ptr(impl_ptr->type_ptr);
+            auto data_ptr = convert<T>::make_data_ptr();
             SampleInfo info;
             auto status = reader->take_next_sample(&data_ptr, &info);
             if (status == RETCODE_OK && info.valid_data && impl_ptr->callback != nullptr) {
-                convert::get(&impl_ptr->type_ptr, data_ptr);
-                impl_ptr->callback(impl_ptr->type_ptr);
+                T value;
+                convert<T>::get(&value, data_ptr);
+                impl_ptr->callback(std::move(value));
             }
         }
 
@@ -342,17 +265,15 @@ struct subscriber_impl : public object {
     Topic* topic;
     DataReader* reader;
     std::shared_ptr<data_listener> listener_ptr;
-    type::ptr type_ptr;
-    std::function<void(type::ptr const&)> callback;
+    std::function<void(T&&)> callback;
 };
 
-int32_t subscriber::init(type::ptr const& type_ptr,
-                         string_t const& topic,
-                         std::function<void(type::ptr const&)> const& callback) {
+template <class T>
+int32_t subscriber::init(string_t const& topic, std::function<void(T&&)> const& callback) {
     int32_t result{0};
 
     do {
-        auto impl_ptr = std::make_shared<subscriber_impl>();
+        auto impl_ptr = std::make_shared<subscriber_impl<T>>();
 
         auto factory = DomainParticipantFactory::get_instance();
         impl_ptr->participant = decltype(impl_ptr->participant){
@@ -365,7 +286,7 @@ int32_t subscriber::init(type::ptr const& type_ptr,
                 }
             }};
 
-        auto type = TypeSupport{new DynamicPubSubType{convert::make_type_ptr(type_ptr)}};
+        auto type = TypeSupport{new DynamicPubSubType{convert<T>::make_type_ptr()}};
         result = impl_ptr->participant->register_type(type);
         if (0 != result) {
             result = static_cast<int32_t>(error::unknown);
@@ -395,7 +316,7 @@ int32_t subscriber::init(type::ptr const& type_ptr,
             DataReaderQos qos{DATAREADER_QOS_DEFAULT};
             impl_ptr->subscriber->get_default_datareader_qos(qos);
             impl_ptr->listener_ptr =
-                std::make_shared<typename subscriber_impl::data_listener>(impl_ptr.get());
+                std::make_shared<typename subscriber_impl<T>::data_listener>(impl_ptr.get());
             impl_ptr->reader = impl_ptr->subscriber->create_datareader(
                 impl_ptr->topic, qos, impl_ptr->listener_ptr.get(), StatusMask::all());
             if (impl_ptr->topic == nullptr) {
@@ -404,7 +325,6 @@ int32_t subscriber::init(type::ptr const& type_ptr,
             }
         }
 
-        impl_ptr->type_ptr = type_ptr;
         impl_ptr->callback = callback;
 
         self::impl = impl_ptr;
@@ -412,6 +332,44 @@ int32_t subscriber::init(type::ptr const& type_ptr,
 
     return result;
 }
+
+void (*g_dds)(void) = force_link_deps;
+
+template <class T>
+auto test() {
+    auto publisher = publisher::make<T>("test");
+    publisher->publish(T{});
+    auto subscriber = subscriber::make<T>("test", [](T&& value) {});
+}
+
+auto register2 = []() {
+    extern void (*g_dds)(void);
+    THROW_EXCEPTION(force_link_deps, "g_dds is nullptr... ");
+    if (g_dds == nullptr) {
+        test<string_t>();
+        test<int8_t>();
+        test<int16_t>();
+        test<int32_t>();
+        test<int64_t>();
+        test<uint8_t>();
+        test<uint16_t>();
+        test<uint32_t>();
+        test<uint64_t>();
+        test<float32_t>();
+        test<float64_t>();
+        test<std::vector<int8_t>>();
+        test<std::vector<int16_t>>();
+        test<std::vector<int32_t>>();
+        test<std::vector<int64_t>>();
+        test<std::vector<uint8_t>>();
+        test<std::vector<uint16_t>>();
+        test<std::vector<uint32_t>>();
+        test<std::vector<uint64_t>>();
+        test<std::vector<float32_t>>();
+        test<std::vector<float64_t>>();
+    }
+    return true;
+}();
 
 };  // namespace dds
 };  // namespace qlib
