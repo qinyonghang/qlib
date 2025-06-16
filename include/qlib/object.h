@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 
 namespace qlib {
 using string_t = std::string;
@@ -109,5 +110,11 @@ static inline bool unlikely(bool ok) {
     return ok;
 #endif
 }
+
+template <class T, class... Ts>
+struct is_one_of : std::disjunction<std::is_same<T, Ts>...> {};
+
+template <class T, class... Ts>
+inline constexpr bool is_one_of_v = is_one_of<T, Ts...>::value;
 
 };  // namespace qlib

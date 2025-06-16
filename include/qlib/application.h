@@ -6,7 +6,6 @@
 #include <iostream>
 
 #include "qlib/argparse.h"
-#include "qlib/exception.h"
 #include "qlib/module.h"
 
 namespace qlib {

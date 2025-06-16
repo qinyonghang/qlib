@@ -46,14 +46,17 @@ struct convert<bool_t> : public object {
 
 template <class T>
 class convert<T,
-              std::enable_if_t<std::disjunction_v<std::is_same<T, int8_t>,
-                                                  std::is_same<T, int16_t>,
-                                                  std::is_same<T, int32_t>,
-                                                  std::is_same<T, int64_t>,
-                                                  std::is_same<T, uint8_t>,
-                                                  std::is_same<T, uint16_t>,
-                                                  std::is_same<T, uint32_t>,
-                                                  std::is_same<T, uint64_t>>>> : public object {
+              std::enable_if_t<is_one_of_v<T,
+                                           int8_t,
+                                           int16_t,
+                                           int32_t,
+                                           int64_t,
+                                           ssize_t,
+                                           uint8_t,
+                                           uint16_t,
+                                           uint32_t,
+                                           uint64_t,
+                                           size_t>>> : public object {
 public:
     static T call(std::string_view s) {
         T result;
