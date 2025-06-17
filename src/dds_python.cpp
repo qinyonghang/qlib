@@ -2,6 +2,8 @@
 #include <Windows.h>
 #endif
 
+#include <iostream>
+
 #include "boost/python.hpp"
 #include "boost/python/overloads.hpp"
 #include "boost/python/suite/indexing/vector_indexing_suite.hpp"
@@ -11,49 +13,99 @@ namespace py = boost::python;
 
 namespace qlib {
 
-namespace dds {
-
-class abstract_type : public qlib::object {
-public:
-    using self = abstract_type;
-    using ptr = std::shared_ptr<self>;
-
-    virtual type::ptr make() = 0;
-};
+class abstract_type;
 
 template <class T>
-class type_wrapper : public abstract_type {
+class type;
+
+using string = type<string_t>;
+using int8 = type<int8_t>;
+using int16 = type<int16_t>;
+using int32 = type<int32_t>;
+using int64 = type<int64_t>;
+using uint8 = type<uint8_t>;
+using uint16 = type<uint16_t>;
+using uint32 = type<uint32_t>;
+using uint64 = type<uint64_t>;
+using float32 = type<float32_t>;
+using float64 = type<float64_t>;
+
+class sequence;
+
+class id : public object {
 public:
-    using base = abstract_type;
-    using self = type_wrapper<T>;
-    using ptr = std::shared_ptr<self>;
-    using value_type = T;
+    enum class value_type : int32_t {
+        unknown = -1,
+        string = 0,
+        int8,
+        int16,
+        int32,
+        int64,
+        uint8,
+        uint16,
+        uint32,
+        uint64,
+        float32,
+        float64,
+        sequence
+    };
 
-    void set(value_type value) { self::value = std::move(value); }
-    value_type get() { return self::value; }
+    using self = id;
 
-    type_wrapper() = default;
+    id(value_type value = value_type::unknown) : impl{value} {}
 
-    type::ptr make() override;
-
-    template <class _T,
-              class = std::enable_if_t<std::is_same_v<value_type, typename _T::value_type>>>
-    static ptr make(typename _T::ptr const& value_ptr) {
-        ptr result = std::make_shared<self>();
-        result->value = static_cast<value_type>(*value_ptr);
-        return result;
+    id(typename abstract_type::ptr const& type) {
+        if (auto _type = std::dynamic_pointer_cast<qlib::string>(type); _type != nullptr) {
+            impl = value_type::string;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::int8>(type); _type != nullptr) {
+            impl = value_type::int8;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::int16>(type); _type != nullptr) {
+            impl = value_type::int16;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::int32>(type); _type != nullptr) {
+            impl = value_type::int32;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::int64>(type); _type != nullptr) {
+            impl = value_type::int64;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::uint8>(type); _type != nullptr) {
+            impl = value_type::uint8;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::uint16>(type); _type != nullptr) {
+            impl = value_type::uint16;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::uint32>(type); _type != nullptr) {
+            impl = value_type::uint32;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::uint64>(type); _type != nullptr) {
+            impl = value_type::uint64;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::float32>(type); _type != nullptr) {
+            impl = value_type::float32;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::float64>(type); _type != nullptr) {
+            impl = value_type::float64;
+        } else if (auto _type = std::dynamic_pointer_cast<qlib::sequence>(type); _type != nullptr) {
+            impl = value_type::sequence;
+        }
     }
 
+    ~id() override = default;
+
+    bool operator==(self const& other) { return this->impl == other.impl; }
+
+    bool operator!=(self const& other) { return !this->operator==(other); }
+
+    auto to_string() const { return static_cast<int32_t>(this->impl); }
+
+    template <class T>
+    static id make();
+
 protected:
-    value_type value;
+    value_type impl{value_type::unknown};
 };
+
+const id id_sequence{id::value_type::sequence};
 
 #define REGISTER_TYPE(T)                                                                           \
     template <>                                                                                    \
-    type::ptr type_wrapper<qlib::T##_t>::make() {                                                  \
-        return dds::T::make(self::value);                                                          \
-    }
-
+    id id::make<T##_t>() {                                                                         \
+        return id{id::value_type::T};                                                              \
+    }                                                                                              \
+    const id id_##T{id::value_type::T};
+REGISTER_TYPE(string)
 REGISTER_TYPE(int8)
 REGISTER_TYPE(int16)
 REGISTER_TYPE(int32)
@@ -64,100 +116,106 @@ REGISTER_TYPE(uint32)
 REGISTER_TYPE(uint64)
 REGISTER_TYPE(float32)
 REGISTER_TYPE(float64)
-REGISTER_TYPE(string)
-
 #undef REGISTER_TYPE
 
-class sequence_wrapper : public abstract_type {
+class abstract_type : public object {
+public:
+    using self = abstract_type;
+    using ptr = sptr<self>;
+
+    virtual qlib::id id() const = 0;
+};
+
+template <class T>
+class type : public abstract_type {
 public:
     using base = abstract_type;
-    using self = sequence_wrapper;
-    using ptr = std::shared_ptr<self>;
+    using self = type<T>;
+    using ptr = sptr<self>;
+    using value_type = T;
 
-    sequence_wrapper(abstract_type::ptr const& type_ptr) {
-#define REGISTER_TYPE(T)                                                                           \
-    if (auto _type_ptr = std::dynamic_pointer_cast<type_wrapper<qlib::T##_t>>(type_ptr);           \
-        _type_ptr != nullptr) {                                                                    \
-        self::obj = self::vector<qlib::T##_t>::make();                                             \
-        self::type_id = self::T;                                                                   \
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        return std::make_shared<self>(std::forward<Args>(args)...);
     }
 
-        REGISTER_TYPE(int8)
-        REGISTER_TYPE(int16)
-        REGISTER_TYPE(int32)
-        REGISTER_TYPE(int64)
-        REGISTER_TYPE(uint8)
-        REGISTER_TYPE(uint16)
-        REGISTER_TYPE(uint32)
-        REGISTER_TYPE(uint64)
-        REGISTER_TYPE(float32)
-        REGISTER_TYPE(float64)
+    type() = default;
 
-#undef REGISTER_TYPE
+    template <class... Args>
+    type(Args&&... args) : value{std::forward<Args>(args)...} {}
 
-        THROW_EXCEPTION(obj, "Unknown Type!");
-    }
+    T const& get() const { return this->value; }
+    void set(T const& value) { this->value = value; }
 
-    void append(py::api::object obj) { return self::obj->append(obj); }
+    qlib::id id() const override { return qlib::id::make<T>(); }
 
-    size_t size() const { return self::obj->size(); }
-
-    void set_item(size_t index, py::api::object obj) { self::obj->set_item(index, obj); }
-
-    py::api::object get_item(size_t index) const { return self::obj->get_item(index); }
-
-    type::ptr make() override {
-        type::ptr result{nullptr};
-
-#define REGISTER_TYPE(T)                                                                           \
-    if (self::type_id == T) {                                                                      \
-        result = sequence<qlib::T##_t>::make(                                                      \
-            std::static_pointer_cast<self::vector<qlib::T##_t>>(obj)->data);                       \
-    }
-        REGISTER_TYPE(int8)
-        REGISTER_TYPE(int16)
-        REGISTER_TYPE(int32)
-        REGISTER_TYPE(int64)
-        REGISTER_TYPE(uint8)
-        REGISTER_TYPE(uint16)
-        REGISTER_TYPE(uint32)
-        REGISTER_TYPE(uint64)
-        REGISTER_TYPE(float32)
-        REGISTER_TYPE(float64)
-#undef REGISTER_TYPE
-
-        THROW_EXCEPTION(result, "Unknown Type!");
-
-        return result;
-    }
-
-    template <class T>
-    sequence_wrapper(typename dds::sequence<T>::ptr const& value_ptr, std::in_place_type_t<T>) {
-        auto obj = self::vector<T>::make();
-        obj->data = static_cast<typename dds::sequence<T>::value_type>(*value_ptr);
-        self::obj = obj;
-        self::type_id = 0xff;
-    }
-
-    template <class T>
-    static ptr make(typename dds::sequence<T>::ptr const& value_ptr) {
-        return std::make_shared<self>(value_ptr, std::in_place_type<T>);
-    }
+    // static qlib::id id() { return qlib::id::make<T>(); }
 
 protected:
-    enum : uint32_t {
-        int8 = 0,
-        int16,
-        int32,
-        int64,
-        uint8,
-        uint16,
-        uint32,
-        uint64,
-        float32,
-        float64,
-    };
+    T value;
+};
 
+class sequence : public abstract_type {
+public:
+    using base = abstract_type;
+    using self = sequence;
+    using ptr = std::shared_ptr<self>;
+
+    template <class Vec>
+    static ptr make(Vec&& vec) {
+        return std::make_shared<self>(std::forward<Vec>(vec),
+                                      std::in_place_type<typename Vec::value_type>);
+    }
+
+    sequence(abstract_type::ptr const& type) {
+        if (type->id() == id_string) {
+            THROW_EXCEPTION(False, "TypeError!");
+        }
+
+#define REGISTER_TYPE(T)                                                                           \
+    else if (type->id() == id_##T) {                                                               \
+        _obj = vector<T##_t>::make();                                                              \
+    }
+        REGISTER_TYPE(int8)
+        REGISTER_TYPE(int16)
+        REGISTER_TYPE(int32)
+        REGISTER_TYPE(int64)
+        REGISTER_TYPE(uint8)
+        REGISTER_TYPE(uint16)
+        REGISTER_TYPE(uint32)
+        REGISTER_TYPE(uint64)
+        REGISTER_TYPE(float32)
+        REGISTER_TYPE(float64)
+#undef REGISTER_TYPE
+        else {
+            THROW_EXCEPTION(False, "TypeError!");
+        }
+
+        self::_value_id = type->id();
+    }
+
+    template <class T>
+    sequence(std::vector<T> const& vec, std::in_place_type_t<T> const& = std::in_place_type<T>) {
+        self::_obj = vector<T>::make(vec);
+        self::_value_id = id::make<T>();
+    }
+
+    void append(py::api::object obj) { return self::_obj->append(obj); }
+
+    size_t size() const { return self::_obj->size(); }
+
+    void set_item(size_t index, py::api::object obj) { self::_obj->set_item(index, obj); }
+
+    py::api::object get_item(size_t index) const { return self::_obj->get_item(index); }
+
+    qlib::id id() const override { return qlib::id{qlib::id::value_type::sequence}; }
+
+    qlib::id value_id() const { return self::_value_id; }
+
+    template <class T>
+    std::vector<T> const& to() const;
+
+protected:
     class object : public qlib::object {
     public:
         using self = object;
@@ -205,80 +263,260 @@ protected:
             return py::api::object(self::data.at(index));
         }
 
+        std::vector<T> const& to() const { return self::data; }
+
+    protected:
         std::vector<T> data;
     };
 
-    uint32_t type_id{};
-    self::object::ptr obj{nullptr};
+    qlib::id _value_id;
+    self::object::ptr _obj{nullptr};
 };  // namespace dds
 
-class publisher_wrapper : public publisher {
+template <>
+std::vector<int8_t> const& sequence::to<int8_t>() const {
+    return std::static_pointer_cast<vector<int8_t>>(_obj)->to();
+}
+
+template <>
+std::vector<int16_t> const& sequence::to<int16_t>() const {
+    return std::static_pointer_cast<vector<int16_t>>(_obj)->to();
+}
+
+template <>
+std::vector<int32_t> const& sequence::to<int32_t>() const {
+    return std::static_pointer_cast<vector<int32_t>>(_obj)->to();
+}
+
+template <>
+std::vector<int64_t> const& sequence::to<int64_t>() const {
+    return std::static_pointer_cast<vector<int64_t>>(_obj)->to();
+}
+
+template <>
+std::vector<uint8_t> const& sequence::to<uint8_t>() const {
+    return std::static_pointer_cast<vector<uint8_t>>(_obj)->to();
+}
+
+template <>
+std::vector<uint16_t> const& sequence::to<uint16_t>() const {
+    return std::static_pointer_cast<vector<uint16_t>>(_obj)->to();
+}
+
+template <>
+std::vector<uint32_t> const& sequence::to<uint32_t>() const {
+    return std::static_pointer_cast<vector<uint32_t>>(_obj)->to();
+}
+
+template <>
+std::vector<uint64_t> const& sequence::to<uint64_t>() const {
+    return std::static_pointer_cast<vector<uint64_t>>(_obj)->to();
+}
+
+template <>
+std::vector<float32_t> const& sequence::to<float32_t>() const {
+    return std::static_pointer_cast<vector<float32_t>>(_obj)->to();
+}
+
+template <>
+std::vector<float64_t> const& sequence::to<float64_t>() const {
+    return std::static_pointer_cast<vector<float64_t>>(_obj)->to();
+}
+
+class publisher : public object {
 public:
-    using base = publisher;
-    using self = publisher_wrapper;
+    publisher(abstract_type::ptr const& type, string_t const& topic) {
+        if (type->id() == id_string) {
+            impl = dds::publisher::make<string_t>(topic);
+        }
+#define REGISTER_TYPE(T)                                                                           \
+    else if (type->id() == id_##T) {                                                               \
+        impl = dds::publisher::make<T##_t>(topic);                                                 \
+    }
+        REGISTER_TYPE(int8)
+        REGISTER_TYPE(int16)
+        REGISTER_TYPE(int32)
+        REGISTER_TYPE(int64)
+        REGISTER_TYPE(uint8)
+        REGISTER_TYPE(uint16)
+        REGISTER_TYPE(uint32)
+        REGISTER_TYPE(uint64)
+        REGISTER_TYPE(float32)
+        REGISTER_TYPE(float64)
 
-    publisher_wrapper(abstract_type::ptr const& type, string_t const& topic)
-            : base{type->make(), topic} {}
+#undef REGISTER_TYPE
+        else if (type->id() == id_sequence) {
+            auto seq = std::dynamic_pointer_cast<sequence>(type);
+            if (seq->value_id() == id_string) {
+                THROW_EXCEPTION(False, "Sequence of string is not supported");
+            }
+#define REGISTER_TYPE(T)                                                                           \
+    else if (seq->value_id() == id_##T) {                                                          \
+        impl = dds::publisher::make<std::vector<T##_t>>(topic);                                    \
+    }
+            REGISTER_TYPE(int8)
+            REGISTER_TYPE(int16)
+            REGISTER_TYPE(int32)
+            REGISTER_TYPE(int64)
+            REGISTER_TYPE(uint8)
+            REGISTER_TYPE(uint16)
+            REGISTER_TYPE(uint32)
+            REGISTER_TYPE(uint64)
+            REGISTER_TYPE(float32)
+            REGISTER_TYPE(float64)
 
-    int32_t publish(abstract_type::ptr const& type) { return base::publish(type->make()); }
+#undef REGISTER_TYPE
+            else {
+                THROW_EXCEPTION(False, "unknown type");
+            }
+        }
+        else {
+            THROW_EXCEPTION(false, "unsupported type!");
+        }
+
+        _id = type->id();
+    }
+
+    int32_t publish(abstract_type::ptr const& type) {
+        int32_t result{0};
+
+        do {
+            if (type->id() != _id) {
+                std::cout << fmt::format("type mismatch: expected {}, got {}", _id, type->id());
+                result = -1;
+                break;
+            }
+
+            if (auto _type = std::dynamic_pointer_cast<string>(type); _type != nullptr) {
+                result = impl->publish(_type->get());
+            }
+#define REGISTER_TYPE(T)                                                                           \
+    else if (auto _type = std::dynamic_pointer_cast<T>(type); _type != nullptr) {                  \
+        result = impl->publish(_type->get());                                                      \
+    }
+            REGISTER_TYPE(int8)
+            REGISTER_TYPE(int16)
+            REGISTER_TYPE(int32)
+            REGISTER_TYPE(int64)
+            REGISTER_TYPE(uint8)
+            REGISTER_TYPE(uint16)
+            REGISTER_TYPE(uint32)
+            REGISTER_TYPE(uint64)
+            REGISTER_TYPE(float32)
+            REGISTER_TYPE(float64)
+#undef REGISTER_TYPE
+            else if (auto _type = std::dynamic_pointer_cast<sequence>(type); _type != nullptr) {
+                if (_type->value_id() == id_string) {
+                    std::cout << "TypeError!" << std::endl;
+                    result = -1;
+                    break;
+                }
+#define REGISTER_TYPE(T)                                                                           \
+    else if (_type->value_id() == id_##T) {                                                        \
+        result = impl->publish(_type->to<T##_t>());                                                \
+    }
+                REGISTER_TYPE(int8)
+                REGISTER_TYPE(int16)
+                REGISTER_TYPE(int32)
+                REGISTER_TYPE(int64)
+                REGISTER_TYPE(uint8)
+                REGISTER_TYPE(uint16)
+                REGISTER_TYPE(uint32)
+                REGISTER_TYPE(uint64)
+                REGISTER_TYPE(float32)
+                REGISTER_TYPE(float64)
+
+#undef REGISTER_TYPE
+            }
+            else {
+                std::cout << "TypeError!" << std::endl;
+            }
+        } while (false);
+
+        return result;
+    }
+
+protected:
+    qlib::id _id;
+    dds::publisher::ptr impl;
 };
 
-class subscriber_wrapper : public subscriber {
+class subscriber : public object {
 public:
-    using base = subscriber;
-    using self = subscriber_wrapper;
-
-    subscriber_wrapper(abstract_type::ptr const& type,
-                       string_t const& topic,
-                       std::function<void(abstract_type::ptr const&)> const& callback)
-            : base{type->make(), topic, [callback](type::ptr const& type_ptr) {
-                       PyGILState_STATE gstate = PyGILState_Ensure();
-                       if (qlib::likely(callback != nullptr)) {
-                           abstract_type::ptr result{nullptr};
+    subscriber(abstract_type::ptr const& type,
+               string_t const& topic,
+               std::function<void(abstract_type::ptr const&)> const& callback) {
+        if (auto _type = std::dynamic_pointer_cast<string>(type); _type != nullptr) {
+            impl = dds::subscriber::make<string_t>(topic, [callback](string_t&& value) {
+                auto state = PyGILState_Ensure();
+                if (likely(callback != nullptr)) {
+                    callback(string::make(std::move(value)));
+                }
+                PyGILState_Release(state);
+            });
+        }
 #define REGISTER_TYPE(T)                                                                           \
-    if (auto _type_ptr = std::dynamic_pointer_cast<dds::T>(type_ptr); _type_ptr != nullptr) {      \
-        result = type_wrapper<qlib::T##_t>::make<dds::T>(_type_ptr);                               \
+    else if (auto _type = std::dynamic_pointer_cast<T>(type); _type != nullptr) {                  \
+        impl = dds::subscriber::make<T##_t>(topic, [callback](T##_t&& value) {                     \
+            auto state = PyGILState_Ensure();                                                      \
+            if (likely(callback != nullptr)) {                                                     \
+                callback(T::make(std::move(value)));                                               \
+            }                                                                                      \
+            PyGILState_Release(state);                                                             \
+        });                                                                                        \
     }
 
-                           REGISTER_TYPE(int8)
-                           REGISTER_TYPE(int16)
-                           REGISTER_TYPE(int32)
-                           REGISTER_TYPE(int64)
-                           REGISTER_TYPE(uint8)
-                           REGISTER_TYPE(uint16)
-                           REGISTER_TYPE(uint32)
-                           REGISTER_TYPE(uint64)
-                           REGISTER_TYPE(float32)
-                           REGISTER_TYPE(float64)
-                           REGISTER_TYPE(string)
+        REGISTER_TYPE(int8)
+        REGISTER_TYPE(int16)
+        REGISTER_TYPE(int32)
+        REGISTER_TYPE(int64)
+        REGISTER_TYPE(uint8)
+        REGISTER_TYPE(uint16)
+        REGISTER_TYPE(uint32)
+        REGISTER_TYPE(uint64)
+        REGISTER_TYPE(float32)
+        REGISTER_TYPE(float64)
 #undef REGISTER_TYPE
-
+        else if (auto _type = std::dynamic_pointer_cast<sequence>(type); _type != nullptr) {
+            if (_type->value_id() == id_string) {
+                THROW_EXCEPTION(false, "TypeError!");
+            }
 #define REGISTER_TYPE(T)                                                                           \
-    if (auto _type_ptr = std::dynamic_pointer_cast<dds::sequence<qlib::T##_t>>(type_ptr);          \
-        _type_ptr != nullptr) {                                                                    \
-        result = sequence_wrapper::make<qlib::T##_t>(_type_ptr);                                   \
+    else if (_type->value_id() == id_##T) {                                                        \
+        impl = dds::subscriber::make<std::vector<T##_t>>(                                          \
+            topic, [callback](std::vector<T##_t>&& value) {                                        \
+                auto state = PyGILState_Ensure();                                                  \
+                if (likely(callback != nullptr)) {                                                 \
+                    callback(sequence::make(std::move(value)));                                    \
+                }                                                                                  \
+                PyGILState_Release(state);                                                         \
+            });                                                                                    \
     }
-                           REGISTER_TYPE(int8)
-                           REGISTER_TYPE(int16)
-                           REGISTER_TYPE(int32)
-                           REGISTER_TYPE(int64)
-                           REGISTER_TYPE(uint8)
-                           REGISTER_TYPE(uint16)
-                           REGISTER_TYPE(uint32)
-                           REGISTER_TYPE(uint64)
-                           REGISTER_TYPE(float32)
-                           REGISTER_TYPE(float64)
-#undef REGISTER_TYPE
 
-                           THROW_EXCEPTION(result, "unknown type");
-                           callback(result);
-                       }
-                       PyGILState_Release(gstate);
-                   }} {
+            REGISTER_TYPE(int8)
+            REGISTER_TYPE(int16)
+            REGISTER_TYPE(int32)
+            REGISTER_TYPE(int64)
+            REGISTER_TYPE(uint8)
+            REGISTER_TYPE(uint16)
+            REGISTER_TYPE(uint32)
+            REGISTER_TYPE(uint64)
+            REGISTER_TYPE(float32)
+            REGISTER_TYPE(float64)
+#undef REGISTER_TYPE
+            else {
+                THROW_EXCEPTION(False, "TypeError!");
+            }
+        }
+        else {
+            THROW_EXCEPTION(false, "unsupported type!");
+        }
     }
+
+protected:
+    dds::subscriber::ptr impl;
 };
 
-};  // namespace dds
 };  // namespace qlib
 
 BOOST_PYTHON_MODULE(qlib) {
@@ -287,17 +525,16 @@ BOOST_PYTHON_MODULE(qlib) {
 #endif
 
     py::scope scope(py::object(py::handle<>(py::borrowed(PyImport_AddModule("qlib.dds")))));
-    using namespace qlib::dds;
+    using namespace qlib;
 
     py::register_ptr_to_python<abstract_type::ptr>();
     py::implicitly_convertible<abstract_type*, abstract_type::ptr>();
     py::class_<abstract_type, boost::noncopyable>("type", py::no_init);
 
 #define REGISTER_TYPE(T)                                                                           \
-    py::class_<type_wrapper<qlib::T##_t>, py::bases<abstract_type>, boost::noncopyable>(           \
-        #T, py::init<>())                                                                          \
-        .def("set", &type_wrapper<qlib::T##_t>::set)                                               \
-        .def("get", &type_wrapper<qlib::T##_t>::get);
+    py::class_<T, py::bases<abstract_type>, boost::noncopyable>(#T, py::init<>())                  \
+        .def("set", &T::set)                                                                       \
+        .def("get", &T::get);
 
     REGISTER_TYPE(int8)
     REGISTER_TYPE(int16)
@@ -313,22 +550,17 @@ BOOST_PYTHON_MODULE(qlib) {
 
 #undef REGISTER_TYPE
 
-    py::class_<sequence_wrapper, py::bases<abstract_type>, boost::noncopyable>(
+    py::class_<sequence, py::bases<abstract_type>, boost::noncopyable>(
         "sequence", py::init<abstract_type::ptr>())
-        .def("__len__", &sequence_wrapper::size)
-        .def("__setitem__", &sequence_wrapper::set_item)
-        .def("__getitem__", &sequence_wrapper::get_item)
-        .def("append", &sequence_wrapper::append);
+        .def("__len__", &sequence::size)
+        .def("__setitem__", &sequence::set_item)
+        .def("__getitem__", &sequence::get_item)
+        .def("append", &sequence::append);
 
-    // py::class_<std::vector<uint8_t>>("vector_uint8")
-    //     .def(py::vector_indexing_suite<std::vector<uint8_t>>());
-    // py::class_<std::vector<uint32_t>>("vector_uint32")
-    //     .def(py::vector_indexing_suite<std::vector<uint32_t>>());
+    py::class_<publisher, boost::noncopyable>("publisher",
+                                              py::init<abstract_type::ptr, std::string>())
+        .def("publish", &publisher::publish);
 
-    py::class_<publisher_wrapper, boost::noncopyable>("publisher",
-                                                      py::init<abstract_type::ptr, std::string>())
-        .def("publish", &publisher_wrapper::publish);
-
-    py::class_<subscriber_wrapper, boost::noncopyable>(
+    py::class_<subscriber, boost::noncopyable>(
         "subscriber", py::init<abstract_type::ptr, std::string, py::object>());
 };

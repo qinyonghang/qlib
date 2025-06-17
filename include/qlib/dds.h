@@ -14,7 +14,7 @@ namespace dds {
 template <class T, class Enable = void>
 struct convert;
 
-class publisher : public object {
+class publisher final : public object {
 public:
     using self = publisher;
     using ptr = sptr<self>;
@@ -43,7 +43,7 @@ protected:
     object::ptr impl{nullptr};
 };
 
-class subscriber : public object {
+class subscriber final : public object {
 public:
     using base = object;
     using self = subscriber;

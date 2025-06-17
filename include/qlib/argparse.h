@@ -45,19 +45,18 @@ struct convert<bool_t> : public object {
 };
 
 template <class T>
-class convert<T,
-              std::enable_if_t<is_one_of_v<T,
-                                           int8_t,
-                                           int16_t,
-                                           int32_t,
-                                           int64_t,
-                                           ssize_t,
-                                           uint8_t,
-                                           uint16_t,
-                                           uint32_t,
-                                           uint64_t,
-                                           size_t>>> : public object {
-public:
+struct convert<T,
+               std::enable_if_t<is_one_of_v<T,
+                                            int8_t,
+                                            int16_t,
+                                            int32_t,
+                                            int64_t,
+                                            ssize_t,
+                                            uint8_t,
+                                            uint16_t,
+                                            uint32_t,
+                                            uint64_t,
+                                            size_t>>> : public object {
     static T call(std::string_view s) {
         T result;
         auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), result);

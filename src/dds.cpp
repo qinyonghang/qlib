@@ -25,17 +25,6 @@ namespace dds {
 
 using namespace eprosima::fastdds::dds;
 
-void __attribute__((used)) force_link_deps(void) {
-    auto error = tinyxml2::XMLDocument::ErrorIDToName(tinyxml2::XML_SUCCESS);
-    std::cout << error << std::endl;
-
-    eprosima::fastcdr::FastBuffer fast_butter;
-    std::cout << reinterpret_cast<void*>(&fast_butter) << std::endl;
-
-    auto handler = foonathan::memory::out_of_memory::get_handler();
-    std::cout << reinterpret_cast<void*>(&handler) << std::endl;
-}
-
 template <class Builder>
 static DynamicType::_ref_type create(Builder&& builder) {
     auto type_factory = DynamicTypeBuilderFactory::get_instance();
@@ -331,6 +320,17 @@ int32_t subscriber::init(string_t const& topic, std::function<void(T&&)> const& 
     } while (false);
 
     return result;
+}
+
+void __attribute__((used)) force_link_deps(void) {
+    auto error = tinyxml2::XMLDocument::ErrorIDToName(tinyxml2::XML_SUCCESS);
+    std::cout << error << std::endl;
+
+    eprosima::fastcdr::FastBuffer fast_butter;
+    std::cout << reinterpret_cast<void*>(&fast_butter) << std::endl;
+
+    auto handler = foonathan::memory::out_of_memory::get_handler();
+    std::cout << reinterpret_cast<void*>(&handler) << std::endl;
 }
 
 void (*g_dds)(void) = force_link_deps;
