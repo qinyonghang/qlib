@@ -322,6 +322,28 @@ int32_t subscriber::init(string_t const& topic, std::function<void(T&&)> const& 
     return result;
 }
 
+template int32_t publisher::publish<string_t>(string_t const&);
+template int32_t publisher::publish<int8_t>(int8_t const&);
+template int32_t publisher::publish<int16_t>(int16_t const&);
+template int32_t publisher::publish<int32_t>(int32_t const&);
+template int32_t publisher::publish<int64_t>(int64_t const&);
+template int32_t publisher::publish<uint8_t>(uint8_t const&);
+template int32_t publisher::publish<uint16_t>(uint16_t const&);
+template int32_t publisher::publish<uint32_t>(uint32_t const&);
+template int32_t publisher::publish<uint64_t>(uint64_t const&);
+template int32_t publisher::publish<float32_t>(float32_t const&);
+template int32_t publisher::publish<float64_t>(float64_t const&);
+template int32_t publisher::publish<std::vector<int8_t>>(std::vector<int8_t> const&);
+template int32_t publisher::publish<std::vector<int16_t>>(std::vector<int16_t> const&);
+template int32_t publisher::publish<std::vector<int32_t>>(std::vector<int32_t> const&);
+template int32_t publisher::publish<std::vector<int64_t>>(std::vector<int64_t> const&);
+template int32_t publisher::publish<std::vector<uint8_t>>(std::vector<uint8_t> const&);
+template int32_t publisher::publish<std::vector<uint16_t>>(std::vector<uint16_t> const&);
+template int32_t publisher::publish<std::vector<uint32_t>>(std::vector<uint32_t> const&);
+template int32_t publisher::publish<std::vector<uint64_t>>(std::vector<uint64_t> const&);
+template int32_t publisher::publish<std::vector<float32_t>>(std::vector<float32_t> const&);
+template int32_t publisher::publish<std::vector<float64_t>>(std::vector<float64_t> const&);
+
 void __attribute__((used)) force_link_deps(void) {
     auto error = tinyxml2::XMLDocument::ErrorIDToName(tinyxml2::XML_SUCCESS);
     std::cout << error << std::endl;

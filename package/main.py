@@ -1,4 +1,4 @@
-from qlib import dds
+from qlib import dds # type: ignore
 import time
 
 
@@ -29,6 +29,10 @@ def float32_callback(message: dds.float32):
 def float64_callback(message: dds.float64):
     print("float64:", message.get())
 
+def seq_callback(message: dds.sequence):
+    for i in range(len(message)):
+        print(f"seq[{i}]: {message[i]}")
+
 
 if __name__ == "__main__":
     publisher_str = dds.publisher(dds.string(), "topic_str")
@@ -52,6 +56,10 @@ if __name__ == "__main__":
     publisher_f64 = dds.publisher(dds.float64(), "topic_f64")
     subscriber_f64 = dds.subscriber(dds.float64(), "topic_f64", float64_callback)
 
+    publisher_seq = dds.publisher(dds.sequence(dds.uint8()), "topic_seq")
+    subscriber_seq = dds.subscriber(dds.sequence(dds.uint8()), "topic_seq", seq_callback)
+
+    index = 0
     while True:
         msg_str = dds.string()
         msg_str.set("Hello World!")
@@ -90,4 +98,10 @@ if __name__ == "__main__":
         # msg_i8.set(-129)  # int8 最小为 -128
         # publisher_i8.publish(msg_i8)
 
+        msg_seq = dds.sequence(dds.uint8())
+        for i in range(index):
+            msg_seq.append(i)
+        publisher_seq.publish(msg_seq)
+
         time.sleep(1)
+        index += 1

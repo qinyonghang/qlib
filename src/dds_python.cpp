@@ -13,25 +13,6 @@ namespace py = boost::python;
 
 namespace qlib {
 
-class abstract_type;
-
-template <class T>
-class type;
-
-using string = type<string_t>;
-using int8 = type<int8_t>;
-using int16 = type<int16_t>;
-using int32 = type<int32_t>;
-using int64 = type<int64_t>;
-using uint8 = type<uint8_t>;
-using uint16 = type<uint16_t>;
-using uint32 = type<uint32_t>;
-using uint64 = type<uint64_t>;
-using float32 = type<float32_t>;
-using float64 = type<float64_t>;
-
-class sequence;
-
 class id : public object {
 public:
     enum class value_type : int32_t {
@@ -53,36 +34,6 @@ public:
     using self = id;
 
     id(value_type value = value_type::unknown) : impl{value} {}
-
-    id(typename abstract_type::ptr const& type) {
-        if (auto _type = std::dynamic_pointer_cast<qlib::string>(type); _type != nullptr) {
-            impl = value_type::string;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::int8>(type); _type != nullptr) {
-            impl = value_type::int8;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::int16>(type); _type != nullptr) {
-            impl = value_type::int16;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::int32>(type); _type != nullptr) {
-            impl = value_type::int32;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::int64>(type); _type != nullptr) {
-            impl = value_type::int64;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::uint8>(type); _type != nullptr) {
-            impl = value_type::uint8;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::uint16>(type); _type != nullptr) {
-            impl = value_type::uint16;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::uint32>(type); _type != nullptr) {
-            impl = value_type::uint32;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::uint64>(type); _type != nullptr) {
-            impl = value_type::uint64;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::float32>(type); _type != nullptr) {
-            impl = value_type::float32;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::float64>(type); _type != nullptr) {
-            impl = value_type::float64;
-        } else if (auto _type = std::dynamic_pointer_cast<qlib::sequence>(type); _type != nullptr) {
-            impl = value_type::sequence;
-        }
-    }
-
-    ~id() override = default;
 
     bool operator==(self const& other) { return this->impl == other.impl; }
 
@@ -144,7 +95,7 @@ public:
     template <class... Args>
     type(Args&&... args) : value{std::forward<Args>(args)...} {}
 
-    T const& get() const { return this->value; }
+    T get() const { return this->value; }
     void set(T const& value) { this->value = value; }
 
     qlib::id id() const override { return qlib::id::make<T>(); }
@@ -154,6 +105,18 @@ public:
 protected:
     T value;
 };
+
+using string = type<string_t>;
+using int8 = type<int8_t>;
+using int16 = type<int16_t>;
+using int32 = type<int32_t>;
+using int64 = type<int64_t>;
+using uint8 = type<uint8_t>;
+using uint16 = type<uint16_t>;
+using uint32 = type<uint32_t>;
+using uint64 = type<uint64_t>;
+using float32 = type<float32_t>;
+using float64 = type<float64_t>;
 
 class sequence : public abstract_type {
 public:
@@ -382,7 +345,9 @@ public:
 
         do {
             if (type->id() != _id) {
-                std::cout << fmt::format("type mismatch: expected {}, got {}", _id, type->id());
+                std::cout << fmt::format("type mismatch: expected {}, got {}", _id.to_string(),
+                                         type->id().to_string())
+                          << std::endl;
                 result = -1;
                 break;
             }
@@ -525,16 +490,15 @@ BOOST_PYTHON_MODULE(qlib) {
 #endif
 
     py::scope scope(py::object(py::handle<>(py::borrowed(PyImport_AddModule("qlib.dds")))));
-    using namespace qlib;
 
-    py::register_ptr_to_python<abstract_type::ptr>();
-    py::implicitly_convertible<abstract_type*, abstract_type::ptr>();
-    py::class_<abstract_type, boost::noncopyable>("type", py::no_init);
+    py::register_ptr_to_python<qlib::abstract_type::ptr>();
+    py::implicitly_convertible<qlib::abstract_type*, qlib::abstract_type::ptr>();
+    py::class_<qlib::abstract_type, boost::noncopyable>("type", py::no_init);
 
 #define REGISTER_TYPE(T)                                                                           \
-    py::class_<T, py::bases<abstract_type>, boost::noncopyable>(#T, py::init<>())                  \
-        .def("set", &T::set)                                                                       \
-        .def("get", &T::get);
+    py::class_<qlib::T, py::bases<qlib::abstract_type>, boost::noncopyable>(#T, py::init<>())      \
+        .def("set", &qlib::T::set)                                                                 \
+        .def("get", &qlib::T::get);
 
     REGISTER_TYPE(int8)
     REGISTER_TYPE(int16)
@@ -550,17 +514,17 @@ BOOST_PYTHON_MODULE(qlib) {
 
 #undef REGISTER_TYPE
 
-    py::class_<sequence, py::bases<abstract_type>, boost::noncopyable>(
-        "sequence", py::init<abstract_type::ptr>())
-        .def("__len__", &sequence::size)
-        .def("__setitem__", &sequence::set_item)
-        .def("__getitem__", &sequence::get_item)
-        .def("append", &sequence::append);
+    py::class_<qlib::sequence, py::bases<qlib::abstract_type>, boost::noncopyable>(
+        "sequence", py::init<qlib::abstract_type::ptr>())
+        .def("__len__", &qlib::sequence::size)
+        .def("__setitem__", &qlib::sequence::set_item)
+        .def("__getitem__", &qlib::sequence::get_item)
+        .def("append", &qlib::sequence::append);
 
-    py::class_<publisher, boost::noncopyable>("publisher",
-                                              py::init<abstract_type::ptr, std::string>())
-        .def("publish", &publisher::publish);
+    py::class_<qlib::publisher, boost::noncopyable>(
+        "publisher", py::init<qlib::abstract_type::ptr, std::string>())
+        .def("publish", &qlib::publisher::publish);
 
-    py::class_<subscriber, boost::noncopyable>(
-        "subscriber", py::init<abstract_type::ptr, std::string, py::object>());
+    py::class_<qlib::subscriber, boost::noncopyable>(
+        "subscriber", py::init<qlib::abstract_type::ptr, std::string, py::object>());
 };
