@@ -172,7 +172,7 @@ public:
         return ref_singleton<self>::make(std::forward<Args>(args)...);
     }
 
-    autoland() = default;
+    // autoland() = default;
 
     template <class... Args>
     autoland(Args&&... args) {

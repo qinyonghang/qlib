@@ -68,6 +68,10 @@ public:
         }
     }
 
+    socket_t socket() const {
+        return self::socket_fd;
+    }
+
     int32_t init(string_t const& ip, uint16_t port, uint32_t retry = 3u) {
         int32_t result{0};
 
