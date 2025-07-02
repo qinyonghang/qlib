@@ -25,7 +25,7 @@ public:
     void emplace(Args&&... args) {
         auto size = self::impl.size();
         if (size >= self::size) {
-            qWarn("Queue is full! Pop Data!");
+            qWarn("Queue: Full! Pop Data!");
             std::lock_guard<std::mutex> lock(self::mutex);
             self::impl.pop();
         }
@@ -39,6 +39,7 @@ public:
         {
             std::lock_guard<std::mutex> lock(self::mutex);
             queue = std::move(self::impl);
+            self::impl = std::queue<T>();
         }
         return queue;
     }

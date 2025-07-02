@@ -20,6 +20,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
+#include <list>
 #include <map>
 #include <mutex>
 #include <queue>
@@ -1389,32 +1390,6 @@ struct impl final : public object {
         {self::index::fpv, DJI_LIVEVIEW_CAMERA_POSITION_FPV},
         {self::index::h30t, DJI_LIVEVIEW_CAMERA_POSITION_NO_1}};
 
-    class register2 : public object {
-    protected:
-        friend class ref_singleton<register2>;
-
-    public:
-        using self = register2;
-        using ptr = std::shared_ptr<self>;
-
-        register2() {
-            T_DjiReturnCode result{DjiLiveview_Init()};
-            THROW_EXCEPTION(result == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS,
-                            "DjiLiveview_Init return {:#x}!", result);
-            qTrace("Camera Init!");
-        }
-
-        ~register2() {
-            T_DjiReturnCode result{DjiLiveview_Deinit()};
-            if (0 != result) {
-                qWarn("DjiLiveview_Deinit return {:#x}!", result);
-            } else {
-                qTrace("Camera Deinit!");
-            }
-        }
-    };
-
-    register2::ptr register_ptr{nullptr};
     self::init_parameter init_parameter;
     std::map<
         uint32_t,
@@ -1427,9 +1402,11 @@ struct impl final : public object {
     std::atomic_bool exit{false};
 
     ~impl() {
-        exit = true;
-        cond_var.notify_all();
-        future.wait();
+        if (future.valid()) {
+            exit = true;
+            cond_var.notify_all();
+            future.wait();
+        }
     }
 };
 };  // namespace __camera__
@@ -1441,12 +1418,19 @@ int32_t camera::init(init_parameter const& parameter) {
         using namespace __camera__;
         auto impl_ptr = std::make_shared<impl>();
 
-        impl_ptr->register_ptr = ref_singleton<impl::register2>::make();
         impl_ptr->init_parameter = parameter;
+
+        T_DjiReturnCode dji_result{DjiLiveview_Init()};
+        if (dji_result != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+            qError("Camera: DjiLiveview_Init return {:#x}!", dji_result);
+            result = -1;
+            break;
+        }
+
         impl_ptr->future = std::async(
             std::launch::async,
             [](impl* impl_ptr) {
-                qTrace("Camera Thread Enter:");
+                qTrace("Camera: Thread Enter:");
 
                 while (!impl_ptr->exit) {
                     {
@@ -1484,11 +1468,19 @@ int32_t camera::init(init_parameter const& parameter) {
                                                DJI_LIVEVIEW_CAMERA_SOURCE_DEFAULT);
                 }
 
-                qTrace("Camera Thread Exit!");
+                T_DjiReturnCode result{DjiLiveview_Deinit()};
+                if (0 != result) {
+                    qWarn("Camera: DjiLiveview_Deinit return {:#x}!", result);
+                } else {
+                    qTrace("Camera: Deinit!");
+                }
+
+                qTrace("Camera: Thread Exit!");
             },
             impl_ptr.get());
 
         self::impl_ptr = impl_ptr;
+        qTrace("Camera: Init!");
     } while (false);
 
     return result;
@@ -1615,6 +1607,38 @@ camera::parameter camera::get(index index) const {
     return parameter;
 }
 
+namespace {
+class ir_camera_register : public object {
+public:
+    using base = object;
+    using self = ir_camera_register;
+    using ptr = std::shared_ptr<self>;
+
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        return ref_singleton<self>::make(std::forward<Args>(args)...);
+    }
+
+    ir_camera_register() {
+        T_DjiReturnCode result{DjiPerception_Init()};
+        THROW_EXCEPTION(0 == result, "init return {:#x}... ", result);
+        qTrace("IR Camera Init!");
+    }
+
+    ~ir_camera_register() {
+        T_DjiReturnCode result{DjiPerception_Deinit()};
+        if (0 != result) {
+            qWarn("DjiPerception_Deinit return {:#x}", result);
+        } else {
+            qTrace("IR Camera Deinit!");
+        }
+    }
+
+protected:
+    friend class ref_singleton<self>;
+};
+};  // namespace
+
 namespace __ir_camera__ {
 struct impl final : public object {
     using base = object;
@@ -1630,42 +1654,12 @@ struct impl final : public object {
         {self::index::back, DJI_PERCEPTION_RECTIFY_REAR},
     };
 
-    class register2 : public object {
-    public:
-        using base = object;
-        using self = register2;
-        using ptr = std::shared_ptr<self>;
-
-        template <class... Args>
-        static ptr make(Args&&... args) {
-            return ref_singleton<self>::make(std::forward<Args>(args)...);
-        }
-
-        register2() {
-            T_DjiReturnCode result{DjiPerception_Init()};
-            THROW_EXCEPTION(0 == result, "init return {:#x}... ", result);
-            qTrace("IR Camera Init!");
-        }
-
-        ~register2() {
-            T_DjiReturnCode result{DjiPerception_Deinit()};
-            if (0 != result) {
-                qWarn("DjiPerception_Deinit return {:#x}", result);
-            } else {
-                qTrace("IR Camera Deinit!");
-            }
-        }
-
-    protected:
-        friend class ref_singleton<self>;
-    };
-
     self::init_parameter init_parameter;
     std::map<uint32_t, std::tuple<std::function<void(self::frame&&)>, std::queue<self::frame>>>
         callbacks;
 
     std::atomic_bool exit{false};
-    register2::ptr register_ptr;
+    ir_camera_register::ptr register_ptr;
     std::future<void> future;
     std::mutex mutex;
     std::condition_variable cond_var;
@@ -1685,7 +1679,7 @@ int32_t ir_camera::init(init_parameter const& parameter) {
         using namespace __ir_camera__;
         auto impl_ptr = std::make_shared<impl>();
 
-        impl_ptr->register_ptr = ref_singleton<impl::register2>::make();
+        impl_ptr->register_ptr = ref_singleton<ir_camera_register>::make();
         impl_ptr->init_parameter = parameter;
         impl_ptr->future = std::async(
             std::launch::async,
@@ -1883,453 +1877,55 @@ ir_camera::parameter ir_camera::get(self::index index) const {
     return result;
 }
 
-namespace __autoland__ {
+namespace {
 
-struct impl : public object {
+class data_subcriber_register final : public object {
+public:
     using base = object;
-    using self = autoland;
+    using self = data_subcriber_register;
+    using ptr = sptr<self>;
 
-    class register2 final : public object {
-    public:
-        using self = register2;
-        using ptr = base::sptr<self>;
-
-        template <class... Args>
-        static ptr make(Args&&... args) {
-            return ref_singleton<self>::make(std::forward<Args>(args)...);
-        }
-
-        register2() {
-            T_DjiReturnCode return_code{0u};
-
-            return_code = DjiFlightController_Init(T_DjiFlightControllerRidInfo{
-                .latitude = 22.542812,
-                .longitude = 113.958902,
-                .altitude = 10,
-            });
-            THROW_EXCEPTION(return_code == 0, "DjiFlightController_Init return {:#x}", return_code);
-
-            qInfo("AutoLand Init!");
-        }
-
-        ~register2() {
-            T_DjiReturnCode return_code{0u};
-
-            return_code = DjiFlightController_DeInit();
-            if (0 != return_code) {
-                qError("DjiFlightController_DeInit return {:#x}!", return_code);
-            }
-
-            qInfo("AutoLand Deinit!");
-        }
-
-    protected:
-        friend class ref_singleton<self>;
-    };
-
-    register2::ptr register_ptr;
-
-    bool_t enable;
-    self::start_parameter enable_parameter;
-
-    bool_t disable;
-    self::stop_parameter disable_parameter;
-
-    std::mutex mutex;
-    std::condition_variable cond_var;
-    std::future<void> future;
-    std::atomic_bool exit{false};
-
-    impl() { register_ptr = register2::make(); }
-
-    ~impl() {
-        if (future.valid()) {
-            exit = true;
-            future.wait();
-        }
+    template <class... Args>
+    static ptr make(Args&&... args) {
+        return ref_singleton<self>::make(std::forward<Args>(args)...);
     }
 
-    static sptr<AprilTags::TagDetector> make_detector(string_t const& codes) {
-        sptr<AprilTags::TagDetector> result{nullptr};
+    data_subcriber_register(object::ptr psdk_register) {
+        T_DjiReturnCode result{0u};
+        result = DjiFcSubscription_Init();
+        THROW_EXCEPTION(result == 0, "DataSubscriber: DjiFcSubscription_Init return {:#x}!",
+                        result);
+        _psdk_register = psdk_register;
+        qInfo("DataSubscriber: Init!");
+    }
 
-        if (codes == "Tag16h5" || codes == "tag16h5") {
-            result = std::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes16h5);
-        } else if (codes == "Tag25h7" || codes == "tag25h7") {
-            result = std::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes25h7);
-        } else if (codes == "Tag25h9" || codes == "tag25h9") {
-            result = std::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes25h9);
-        } else if (codes == "Tag36h9" || codes == "tag36h9") {
-            result = std::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes36h9);
-        } else if (codes == "Tag36h11" || codes == "tag36h11") {
-            result = std::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes36h11);
+    ~data_subcriber_register() {
+        T_DjiReturnCode result{0u};
+        result = DjiFcSubscription_DeInit();
+        if (0 != result) {
+            qError("DataSubscriber: DjiFcSubscription_DeInit return {:#x}!", result);
         }
-
-        return result;
+        qInfo("DataSubscriber: DeInit!");
     }
 
-    static auto default_land(size_t retry_max = 30) {
-        int32_t result{0};
-
-        do {
-            T_DjiReturnCode dji_result{0u};
-
-            dji_result = DjiFlightController_StartLanding();
-            if (dji_result != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                qError("AutoLand: DjiFlightController_StartLanding return {:#x}", dji_result);
-                result = static_cast<int32_t>(error::unknown);
-                break;
-            }
-
-            T_DjiFcSubscriptionFlightStatus status{DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_STOPED};
-            T_DjiDataTimestamp timestamp{0};
-            DjiFcSubscription_GetLatestValueOfTopic(
-                DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT, (uint8_t*)&status,
-                sizeof(T_DjiFcSubscriptionFlightStatus), &timestamp);
-            for (auto retry = 0u;
-                 (status == DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_IN_AIR) && (retry < retry_max);
-                 ++retry) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                DjiFcSubscription_GetLatestValueOfTopic(
-                    DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT, (uint8_t*)&status,
-                    sizeof(T_DjiFcSubscriptionFlightStatus), &timestamp);
-            }
-            if (status == DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_IN_AIR) {
-                qError("AutoLand: DjiFlightController_StartLanding Timeout!");
-                result = static_cast<int32_t>(error::unknown);
-                break;
-            }
-        } while (false);
-
-        return result;
-    }
-
-    static auto start(self::start_parameter const& parameter, size_t retry_max = 30) {
-        int32_t result{0};
-
-        do {
-            T_DjiReturnCode dji_result{0u};
-
-            if (parameter.enable_vision) {
-                auto detector = make_detector(parameter.codes);
-                if (detector == nullptr) {
-                    result = static_cast<int32_t>(qlib::error::unknown);
-                    break;
-                }
-
-                auto camera = ir_camera::make();
-
-                auto camera_parameter = camera->get(ir_camera::index::bottom);
-                qInfo("AutoLand: Camera Parameter={}!", camera_parameter);
-
-                std::mutex mutex;
-                ir_camera::frame frame;
-                camera->subscribe(ir_camera::index::bottom,
-                                  [&frame, &mutex](ir_camera::frame&& _frame) {
-                                      if (_frame.left) {
-                                          std::lock_guard<std::mutex> lock(mutex);
-                                          frame = std::move(_frame);
-                                      }
-                                  });
-
-                T_DjiFcSubscriptionFlightStatus status{DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_IN_AIR};
-                T_DjiFcSubscriptionHeightRelative height{10u};
-                T_DjiDataTimestamp timestamp{0};
-                while (status != DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_STOPED) {
-                    dji_result = DjiFcSubscription_GetLatestValueOfTopic(
-                        DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT, (uint8_t*)&status,
-                        sizeof(T_DjiFcSubscriptionFlightStatus), &timestamp);
-                    if (dji_result != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                        qError("AutoLand: DjiFcSubscription_GetLatestValueOfTopic return {:#x}!",
-                               dji_result);
-                        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                        continue;
-                    }
-
-                    ir_camera::frame cur_frame;
-                    {
-                        std::lock_guard<std::mutex> lock(mutex);
-                        cur_frame = std::move(frame);
-                        frame = ir_camera::frame{};
-                    }
-
-                    if (cur_frame.data.size() == camera_parameter.width * camera_parameter.height) {
-                        auto tags = detector->extractTags(cv::Mat(camera_parameter.height,
-                                                                  camera_parameter.width, CV_8U,
-                                                                  (void*)cur_frame.data.data()));
-                        AprilTags::TagDetection tag;
-                        for (auto&& it : tags) {
-                            if (it.good) {
-                                tag = std::move(it);
-                                break;
-                            }
-                        }
-
-                        if (tag.good) {
-                            qDebug("AutoLand: Tag: {},{},,[{},{},{},{}]", tag.id,
-                                   tag.hammingDistance, tag.cxy, tag.p[0], tag.p[1], tag.p[2],
-                                   tag.p[3]);
-
-                            dji_result = DjiFcSubscription_GetLatestValueOfTopic(
-                                DJI_FC_SUBSCRIPTION_TOPIC_HEIGHT_RELATIVE, (uint8_t*)&height,
-                                sizeof(T_DjiFcSubscriptionHeightRelative), &timestamp);
-                            if (dji_result != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                                qWarn("AutoLand: DjiFcSubscription_GetLatestValueOfTopic return "
-                                      "{:#x}!",
-                                      dji_result);
-                                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                                continue;
-                            }
-                            qDebug("AutoLand: DjiFcSubscription_GetLatestValueOfTopic return {}!",
-                                   height);
-
-                            // 获取图像中心点
-                            float img_center_x = camera_parameter.width / 2.0f;
-                            float img_center_y = camera_parameter.height / 2.0f;
-
-                            // 标签中心坐标
-                            auto [tag_center_x, tag_center_y] = tag.cxy;
-
-                            // 计算像素偏移量
-                            float offset_x_pixel = tag_center_x - img_center_x;
-                            float offset_y_pixel = tag_center_y - img_center_y;
-
-                            // 使用相机内参矩阵计算空间偏移
-                            float fx = camera_parameter.intrinsics_left[0];  // 焦距 x
-                            float fy = camera_parameter.intrinsics_left[4];  // 焦距 y
-
-                            // 当前高度
-                            float distance = height;
-
-                            // 转换为空间偏移量
-                            float offset_x = (offset_x_pixel / fx) * distance;
-                            float offset_y = (offset_y_pixel / fy) * distance;
-
-                            // 动态调整速度因子
-                            float speed_factor =
-                                std::min(1.0f, distance / 5.0f);  // 根据高度调整速度因子
-                            auto vx = -offset_y * speed_factor;   // 左右偏移 -> Y 轴运动
-                            auto vy = -offset_x * speed_factor;   // 前后偏移 -> X 轴运动
-
-                            vy = std::clamp(vy, -2.0f, 2.0f);
-                            vx = std::clamp(vx, -2.0f, 2.0f);
-
-                            qDebug("AutoLand: vx: {}, vy: {}", vx, vy);
-                            dji_result = DjiFlightController_ExecuteJoystickAction(
-                                T_DjiFlightControllerJoystickCommand{vy, vx, -1.0, 0});
-                            if (dji_result != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                                qError("AutoLand: DjiFlightController_ExecuteJoystickAction "
-                                       "return {:#x}!",
-                                       dji_result);
-                            }
-                        } else {
-                            dji_result = DjiFlightController_ExecuteJoystickAction(
-                                T_DjiFlightControllerJoystickCommand{0, 0, -0.5, 0});
-                            if (0 != dji_result) {
-                                qError("AutoLand: DjiFlightController_ExecuteJoystickAction "
-                                       "return {:#x}!",
-                                       dji_result);
-                            }
-                        }
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                }
-            } else {
-                T_DjiReturnCode dji_result{0u};
-
-                dji_result = DjiFlightController_StartLanding();
-                if (dji_result != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                    qError("AutoLand: DjiFlightController_StartLanding return {:#x}", dji_result);
-                    result = static_cast<int32_t>(error::unknown);
-                    break;
-                }
-
-                T_DjiFcSubscriptionFlightStatus status{DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_STOPED};
-                T_DjiDataTimestamp timestamp{0};
-                DjiFcSubscription_GetLatestValueOfTopic(
-                    DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT, (uint8_t*)&status,
-                    sizeof(T_DjiFcSubscriptionFlightStatus), &timestamp);
-                for (auto retry = 0u;
-                     (status == DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_IN_AIR) && (retry < retry_max);
-                     ++retry) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    DjiFcSubscription_GetLatestValueOfTopic(
-                        DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT, (uint8_t*)&status,
-                        sizeof(T_DjiFcSubscriptionFlightStatus), &timestamp);
-                }
-                if (status == DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_IN_AIR) {
-                    qError("AutoLand: DjiFlightController_StartLanding Timeout!");
-                    result = static_cast<int32_t>(error::unknown);
-                    break;
-                }
-            }
-        } while (false);
-
-        return result;
-    }
-
-    static auto stop(self::stop_parameter const& parameter) { return 0; }
+protected:
+    object::ptr _psdk_register;
 };
 
-};  // namespace __autoland__
-
-int32_t autoland::init(init_parameter const& parameter) {
-    int32_t result{0};
-
-    do {
-        auto impl = std::make_shared<__autoland__::impl>();
-
-        impl->future = std::async(
-            std::launch::async,
-            [](__autoland__::impl* impl) {
-                qInfo("AutoLand Thread Enter:");
-
-                bool_t enable{False};
-                start_parameter enable_parameter;
-                bool_t disable{False};
-                stop_parameter disable_parameter;
-                while (!impl->exit) {
-                    {
-                        std::unique_lock<std::mutex> lock(impl->mutex);
-                        impl->cond_var.wait(lock);
-                        if (impl->exit) {
-                            break;
-                        }
-
-                        enable = impl->enable;
-                        enable_parameter = impl->enable_parameter;
-                        disable = impl->disable;
-                        disable_parameter = impl->disable_parameter;
-                        impl->enable = False;
-                        impl->disable = False;
-                    }
-
-                    auto dji_result = DjiFlightController_ObtainJoystickCtrlAuthority();
-                    if (dji_result != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                        qWarn("AutoLand: DjiFlightController_ObtainJoystickCtrlAuthority return "
-                              "{:#x}!",
-                              dji_result);
-                    }
-
-                    if (enable) {
-                        qInfo("AutoLand: Enable with {}!", enable_parameter);
-                        int32_t result{impl->start(enable_parameter)};
-                        qInfo("AutoLand: Enable Result: {}!", result);
-                        if (likely(enable_parameter.callback != nullptr)) {
-                            enable_parameter.callback(result);
-                        }
-                    }
-
-                    if (disable) {
-                        qInfo("AutoLand: Disable with {}!", disable_parameter);
-                        int32_t result{impl->stop(disable_parameter)};
-                        qInfo("AutoLand: Disable Result: {}!", result);
-                        if (likely(disable_parameter.callback != nullptr)) {
-                            disable_parameter.callback(result);
-                        }
-                    }
-
-                    dji_result = DjiFlightController_ReleaseJoystickCtrlAuthority();
-                    if (dji_result != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                        qWarn("AutoLand: DjiFlightController_ReleaseJoystickCtrlAuthority return "
-                              "{:#x}!",
-                              dji_result);
-                    }
-                }
-                qInfo("AutoLand Thread Exit!");
-            },
-            impl.get());
-
-        self::impl = impl;
-    } while (false);
-
-    return result;
-}
-
-int32_t autoland::start(start_parameter const& parameter) {
-    int32_t result{0};
-
-    do {
-        auto impl = std::static_pointer_cast<__autoland__::impl>(self::impl);
-        if (unlikely(!impl)) {
-            result = static_cast<int32_t>(error::impl_nullptr);
-            break;
-        }
-
-        std::lock_guard<std::mutex> lock(impl->mutex);
-        if (unlikely(impl->enable)) {
-            result = static_cast<int32_t>(error::param_invalid);
-            break;
-        }
-
-        impl->enable = True;
-        impl->enable_parameter = parameter;
-        impl->cond_var.notify_one();
-    } while (false);
-
-    return result;
-}
-
-int32_t autoland::stop(stop_parameter const& parameter) {
-    int32_t result{0};
-
-    do {
-        auto impl = std::static_pointer_cast<__autoland__::impl>(self::impl);
-        if (unlikely(!impl)) {
-            result = static_cast<int32_t>(error::impl_nullptr);
-            break;
-        }
-
-        std::lock_guard<std::mutex> lock(impl->mutex);
-        if (unlikely(impl->disable)) {
-            result = static_cast<int32_t>(error::param_invalid);
-            break;
-        }
-
-        impl->disable = True;
-        impl->disable_parameter = parameter;
-        impl->cond_var.notify_one();
-    } while (false);
-
-    return result;
-}
-
-namespace __data_subcriber__ {
-struct impl final : public object {
+struct data_subcriber_impl final : public object {
     using self = data_subcriber;
 
-    class register2 final : public object {
-    public:
-        register2() {
-            T_DjiReturnCode result{0u};
-            result = DjiFcSubscription_Init();
-            THROW_EXCEPTION(result == 0, "DataSubscriber: DjiFcSubscription_Init return {:#x}!",
-                            result);
-            qInfo("DataSubscriber: Init!");
-        }
-
-        ~register2() {
-            T_DjiReturnCode result{0u};
-            result = DjiFcSubscription_DeInit();
-            if (0 != result) {
-                qError("DataSubscriber: DjiFcSubscription_DeInit return {:#x}!", result);
-            }
-            qInfo("DataSubscriber: DeInit!");
-        }
-    };
-
-    object::ptr psdk_register;
-    register2::ptr _register;
+    data_subcriber_register::ptr _register;
     std::future<void> future;
     std::atomic_bool exit{false};
     std::mutex mutex;
     self::data data;
 
-    impl(object::ptr const& psdk_register) {
-        impl::psdk_register = psdk_register;
-        _register = std::make_shared<register2>();
+    data_subcriber_impl(object::ptr const& psdk_register) {
+        _register = data_subcriber_register::make(psdk_register);
     }
 
-    ~impl() {
+    ~data_subcriber_impl() {
         if (future.valid()) {
             exit = true;
             future.wait();
@@ -2337,16 +1933,27 @@ struct impl final : public object {
     }
 };
 
-};  // namespace __data_subcriber__
+};  // namespace
 
 int32_t data_subcriber::init(object::ptr const& _register) {
     int32_t result{0};
 
     do {
-        auto impl = std::make_shared<__data_subcriber__::impl>(_register);
+        auto impl = std::make_shared<data_subcriber_impl>(_register);
 
-        result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT,
-                                                  DJI_DATA_SUBSCRIPTION_TOPIC_10_HZ, NULL);
+        result = DjiFcSubscription_SubscribeTopic(
+            DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT, DJI_DATA_SUBSCRIPTION_TOPIC_10_HZ,
+            +[](uint8_t const* data_ptr, uint16_t data_size,
+                T_DjiDataTimestamp const* timestamp) -> T_DjiReturnCode {
+                (void)data_size;
+                (void)timestamp;
+                auto subscriber = data_subcriber::make();
+                if (likely(subscriber != nullptr)) {
+                    subscriber->_status =
+                        *reinterpret_cast<T_DjiFcSubscriptionFlightStatus const*>(data_ptr);
+                }
+                return DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
+            });
         if (0 != result) {
             qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
             break;
@@ -2375,6 +1982,24 @@ int32_t data_subcriber::init(object::ptr const& _register) {
 
         result = DjiFcSubscription_SubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_ALTITUDE_FUSED,
                                                   DJI_DATA_SUBSCRIPTION_TOPIC_50_HZ, NULL);
+        if (0 != result) {
+            qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
+            break;
+        }
+
+        result = DjiFcSubscription_SubscribeTopic(
+            DJI_FC_SUBSCRIPTION_TOPIC_HEIGHT_FUSION, DJI_DATA_SUBSCRIPTION_TOPIC_100_HZ,
+            +[](uint8_t const* data_ptr, uint16_t data_size,
+                T_DjiDataTimestamp const* timestamp) -> T_DjiReturnCode {
+                (void)data_size;
+                (void)timestamp;
+                auto subscriber = data_subcriber::make();
+                if (likely(subscriber != nullptr)) {
+                    subscriber->_relative_height =
+                        *reinterpret_cast<T_DjiFcSubscriptionHeightFusion const*>(data_ptr);
+                }
+                return DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
+            });
         if (0 != result) {
             qError("DjiFcSubscription_SubscribeTopic return {:#x}", result);
             break;
@@ -2424,22 +2049,12 @@ int32_t data_subcriber::init(object::ptr const& _register) {
 
         impl->future = std::async(
             std::launch::async,
-            [](__data_subcriber__::impl* impl) {
+            [](data_subcriber_impl* impl) {
                 int32_t result{0};
                 T_DjiDataTimestamp timestamp{0};
                 self::data data;
                 while (!impl->exit) {
                     qTrace("FcDataSubcriber Running!");
-
-                    {
-                        T_DjiFcSubscriptionFlightStatus flight_status{0u};
-                        result = DjiFcSubscription_GetLatestValueOfTopic(
-                            DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT, &flight_status,
-                            sizeof(flight_status), &timestamp);
-                        if (DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS == result) {
-                            data.status = flight_status;
-                        }
-                    }
 
                     {
                         T_DjiFcSubscriptionDisplaymode display_mode{0u};
@@ -2594,7 +2209,7 @@ data_subcriber::data data_subcriber::get() const {
     data_subcriber::data result;
 
     do {
-        auto impl = std::dynamic_pointer_cast<__data_subcriber__::impl>(self::impl);
+        auto impl = std::dynamic_pointer_cast<data_subcriber_impl>(self::impl);
         if (impl == nullptr) {
             qError("DataSubscriber: impl is nullptr!");
             break;
@@ -2607,9 +2222,9 @@ data_subcriber::data data_subcriber::get() const {
     return result;
 }
 
-namespace __flight_control__ {
+namespace {
 
-struct impl : public object {
+struct flight_control_impl : public object {
     using self = flight_control;
 
     class register2 final : public object {
@@ -2655,6 +2270,8 @@ struct impl : public object {
 
     psdk::register2::ptr psdk_register_ptr;
     register2::ptr register_ptr;
+    ir_camera_register::ptr ir_camera_register_ptr;
+    data_subcriber::ptr data_subcriber_ptr;
     self::init_parameter init_parameter;
 
     std::future<void> future;
@@ -2668,7 +2285,7 @@ struct impl : public object {
     T_DjiWayPointV2MissionSettings mission;
     std::atomic<bool_t> route_finished{False};
 
-    ~impl() {
+    ~flight_control_impl() {
         if (future.valid()) {
             exit = true;
             condition.notify_all();
@@ -2766,6 +2383,171 @@ struct impl : public object {
         }
 
         return result;
+    }
+
+    auto land1() {
+        int32_t result{0};
+
+        do {
+            auto detector = std::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes16h5);
+            if (detector == nullptr) {
+                qError("FlightControl: AprilTags::TagDetector is nullptr!");
+                result = static_cast<int32_t>(qlib::error::unknown);
+                break;
+            }
+
+            static std::mutex mutex;
+            static cv::Mat image;
+            auto return_code = DjiPerception_SubscribePerceptionImage(
+                DJI_PERCEPTION_RECTIFY_DOWN,
+                +[](T_DjiPerceptionImageInfo info, uint8_t* buf, uint32_t len) {
+                    if ((info.dataType % 2) == 1) {
+                        qTrace("FlightControl: Receive Image: {}!", info);
+                        auto _image = cv::Mat(info.rawInfo.height, info.rawInfo.width, CV_8U);
+                        std::memcpy(_image.data, buf, len);
+                        std::lock_guard<std::mutex> lock(mutex);
+                        image = std::move(_image);
+                    }
+                });
+            if (return_code != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                qError("FlightControl: DjiPerception_SubscribePerceptionImage return {:#x}!",
+                       return_code);
+                break;
+            }
+
+            std::list<T_DjiFlightControllerJoystickCommand> joystick_commands;
+            for (auto start = std::chrono::steady_clock::now();
+                 flight_control_impl::exit != True;) {
+                if (auto now = std::chrono::steady_clock::now();
+                    now - start > std::chrono::seconds(90)) {
+                    qError("FlightControl: Land1 Timeout!");
+                    break;
+                }
+
+                auto height = data_subcriber_ptr->relative_height() > 0.f
+                    ? data_subcriber_ptr->relative_height()
+                    : 10.f;
+                qDebug("FlightControl: RelativeHeight: {}!", height);
+
+                T_DjiFlightControllerJoystickCommand action{
+                    .x = 0.0f, .y = 0.0f, .z = -std::clamp(height / 2.f, 0.1f, 1.0f), .yaw = 0.0f};
+
+                cv::Mat cur_image;
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    cur_image = std::move(image);
+                }
+
+                if (!cur_image.empty()) {
+                    auto tags = detector->extractTags(cur_image);
+                    AprilTags::TagDetection tag;
+                    for (auto&& it : tags) {
+                        if (it.good) {
+                            tag = std::move(it);
+                            break;
+                        }
+                    }
+
+                    qDebug("FlightControl: Tag: {},{},{},[{},{},{},{}]", tag.id,
+                           tag.hammingDistance, tag.cxy, tag.p[0], tag.p[1], tag.p[2], tag.p[3]);
+                    if (tag.good) {
+                        auto [tag_center_x, tag_center_y] = tag.cxy;
+                        auto img_center_x = cur_image.cols / 2.0f;
+                        auto img_center_y = cur_image.rows / 2.0f;
+
+                        float norm_x = (tag_center_x - img_center_x) / img_center_x;
+                        float norm_y = (tag_center_y - img_center_y) / img_center_y;
+
+                        qDebug("FlightControl: Parameter: {},{},{},{},{},{}", tag_center_x,
+                               tag_center_y, norm_x, norm_y, img_center_x, img_center_y);
+
+                        if (std::abs(norm_x) < 0.05f && std::abs(norm_y) < 0.05f && height < 2.f) {
+                            qInfo("FlightControl: Land1 Success!");
+                            break;
+                        }
+
+                        action.x = std::clamp(-norm_x * height * 2.f, -1.f, 1.f);
+                        action.y = std::clamp(-norm_y * height * 2.f, -1.f, 1.f);
+                        if (height < 2.f) {
+                            action.z = 0.f;
+                        }
+                    }
+                }
+
+                qInfo("FlightControl: JoystickAction: {},{},{},{}", action.x, action.y, action.z,
+                      action.yaw);
+                joystick_commands.emplace_back(action);
+                if (joystick_commands.size() > 5) {
+                    joystick_commands.pop_front();
+                }
+                T_DjiFlightControllerJoystickCommand real_command{
+                    .x = 0.,
+                    .y = 0.,
+                    .z = 0.,
+                    .yaw = 0.,
+                };
+                for (auto& it : joystick_commands) {
+                    real_command.x += it.x;
+                    real_command.y += it.y;
+                    real_command.z += it.z;
+                    real_command.yaw += it.yaw;
+                }
+                real_command.x /= joystick_commands.size();
+                real_command.y /= joystick_commands.size();
+                real_command.z /= joystick_commands.size();
+                real_command.yaw /= joystick_commands.size();
+
+                qInfo("FlightControl: RealJoystickAction: {},{},{},{}", real_command.x,
+                      real_command.y, real_command.z, real_command.yaw);
+
+                DjiFlightController_SetJoystickMode(T_DjiFlightControllerJoystickMode{
+                    DJI_FLIGHT_CONTROLLER_HORIZONTAL_VELOCITY_CONTROL_MODE,
+                    DJI_FLIGHT_CONTROLLER_VERTICAL_VELOCITY_CONTROL_MODE,
+                    DJI_FLIGHT_CONTROLLER_YAW_ANGLE_RATE_CONTROL_MODE,
+                    DJI_FLIGHT_CONTROLLER_HORIZONTAL_BODY_COORDINATE,
+                    DJI_FLIGHT_CONTROLLER_STABLE_CONTROL_MODE_ENABLE,
+                });
+                return_code = DjiFlightController_ExecuteJoystickAction(real_command);
+                if (0 != return_code) {
+                    qError("FlightControl: DjiFlightController_ExecuteJoystickAction "
+                           "return {:#x}!",
+                           return_code);
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            }
+
+            return_code = DjiPerception_UnsubscribePerceptionImage(DJI_PERCEPTION_RECTIFY_DOWN);
+            if (return_code != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                qWarn("FlightControl: DjiPerception_UnsubscribePerceptionImage return {:#x}!",
+                      return_code);
+            }
+        } while (false);
+
+        return result;
+    }
+
+    void land2() {
+        auto return_code = DjiFlightController_StartLanding();
+        if (return_code != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+            qWarn("FlightControl: DjiFlightController_StartLanding return "
+                  "{:#x}!",
+                  return_code);
+        }
+
+        for (auto start = std::chrono::steady_clock::now(); flight_control_impl::exit != True;) {
+            auto status = data_subcriber_ptr->status();
+            qDebug("FlightControl: FlightStatus: {}!", status);
+            if (status == DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_STOPED) {
+                break;
+            }
+
+            if (std::chrono::steady_clock::now() - start > std::chrono::seconds(5)) {
+                qError("FlightControl: Landing Timeout!");
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
     }
 
     int32_t handle_takeoff_or_land(self::action action) {
@@ -2904,7 +2686,7 @@ struct impl : public object {
             }
 
             qTrace("FlightControl: Waypoints Start!");
-            impl::route_finished = False;
+            flight_control_impl::route_finished = False;
             return_code = DjiWaypointV2_Start();
             if (return_code != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
                 qError("DjiWaypointV2_Start return {:#x}!", return_code);
@@ -2912,7 +2694,8 @@ struct impl : public object {
                 break;
             }
 
-            while (impl::route_finished != True && impl::exit != True) {
+            while (flight_control_impl::route_finished != True &&
+                   flight_control_impl::exit != True) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
 
@@ -2922,7 +2705,7 @@ struct impl : public object {
                 qError("FlightControl: DjiWaypointV2_Stop return {:#x}!", return_code);
             }
 
-            if (unlikely(impl::exit == True)) {
+            if (unlikely(flight_control_impl::exit == True)) {
                 qInfo("FlightControl: Exit!");
                 result = self::result::unknown_error;
                 break;
@@ -2935,138 +2718,8 @@ struct impl : public object {
                       return_code);
             }
 
-            auto detector = std::make_shared<AprilTags::TagDetector>(AprilTags::tagCodes16h5);
-            if (detector == nullptr) {
-                qError("FlightControl: AprilTags::TagDetector is nullptr!");
-                result = static_cast<int32_t>(qlib::error::unknown);
-                break;
-            }
-
-            auto ir_camera_register_ptr = __ir_camera__::impl::register2::make();
-
-            static std::mutex mutex;
-            static cv::Mat image;
-            return_code = DjiPerception_SubscribePerceptionImage(
-                DJI_PERCEPTION_RECTIFY_DOWN,
-                +[](T_DjiPerceptionImageInfo info, uint8_t* buf, uint32_t len) {
-                    qTrace("FlightControl: Receive Image: {}!", info);
-                    if ((info.dataType % 2) == 1) {
-                        auto _image = cv::Mat(info.rawInfo.height, info.rawInfo.width, CV_8U);
-                        std::memcpy(_image.data, buf, len);
-                        std::lock_guard<std::mutex> lock(mutex);
-                        image = std::move(_image);
-                    }
-#ifdef DEBUG
-                    static std::ofstream ofs_left{[]() {
-                        auto now = std::chrono::system_clock::now();
-                        auto time = std::chrono::system_clock::to_time_t(now);
-                        auto file =
-                            fmt::format("{:%Y-%m-%d_%H-%M-%S}_left.gray", fmt::localtime(time));
-                        return file;
-                    }()};
-
-                    static std::ofstream ofs_right{[]() {
-                        auto now = std::chrono::system_clock::now();
-                        auto time = std::chrono::system_clock::to_time_t(now);
-                        auto file =
-                            fmt::format("{:%Y-%m-%d_%H-%M-%S}_right.gray", fmt::localtime(time));
-                        return file;
-                    }()};
-
-                    if ((info.dataType % 2) == 1) {
-                        ofs_left.write(reinterpret_cast<char*>(buf), len);
-                    } else {
-                        ofs_right.write(reinterpret_cast<char*>(buf), len);
-                    }
-#endif
-                });
-            if (return_code != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                qError("FlightControl: DjiPerception_SubscribePerceptionImage return {:#x}!",
-                       return_code);
-                break;
-            }
-
-            DjiFlightController_SetJoystickMode(T_DjiFlightControllerJoystickMode{
-                DJI_FLIGHT_CONTROLLER_HORIZONTAL_VELOCITY_CONTROL_MODE,
-                DJI_FLIGHT_CONTROLLER_VERTICAL_VELOCITY_CONTROL_MODE,
-                DJI_FLIGHT_CONTROLLER_YAW_ANGLE_RATE_CONTROL_MODE,
-                DJI_FLIGHT_CONTROLLER_HORIZONTAL_GROUND_COORDINATE,
-                DJI_FLIGHT_CONTROLLER_STABLE_CONTROL_MODE_ENABLE,
-            });
-
-            T_DjiFcSubscriptionFlightStatus status{DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_IN_AIR};
-            T_DjiFcSubscriptionHeightRelative height{10u};
-            while (status != DJI_FC_SUBSCRIPTION_FLIGHT_STATUS_STOPED && impl::exit != True) {
-                return_code = DjiFcSubscription_GetLatestValueOfTopic(
-                    DJI_FC_SUBSCRIPTION_TOPIC_STATUS_FLIGHT, (uint8_t*)&status,
-                    sizeof(T_DjiFcSubscriptionFlightStatus), &timestamp);
-                if (return_code != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                    qWarn("FlightControl: DjiFcSubscription_GetLatestValueOfTopic return {:#x}!",
-                          return_code);
-                }
-
-                cv::Mat cur_image;
-                {
-                    std::lock_guard<std::mutex> lock(mutex);
-                    cur_image = std::move(image);
-                    image = cv::Mat();
-                }
-
-                if (!cur_image.empty()) {
-                    auto tags = detector->extractTags(cur_image);
-                    AprilTags::TagDetection tag;
-                    for (auto&& it : tags) {
-                        if (it.good) {
-                            tag = std::move(it);
-                            break;
-                        }
-                    }
-
-                    T_DjiFlightControllerJoystickCommand action{
-                        .x = 0.0f, .y = 0.0f, .z = -0.3f, .yaw = 0.0f};
-                    if (tag.good) {
-                        qDebug("FlightControl: Tag: {},{},,[{},{},{},{}]", tag.id,
-                               tag.hammingDistance, tag.cxy, tag.p[0], tag.p[1], tag.p[2],
-                               tag.p[3]);
-
-                        return_code = DjiFcSubscription_GetLatestValueOfTopic(
-                            DJI_FC_SUBSCRIPTION_TOPIC_HEIGHT_RELATIVE, (uint8_t*)&height,
-                            sizeof(T_DjiFcSubscriptionHeightRelative), &timestamp);
-                        if (return_code != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                            qWarn("FlightControl: DjiFcSubscription_GetLatestValueOfTopic return "
-                                  "{:#x}!",
-                                  return_code);
-                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                            continue;
-                        }
-                        qDebug("FlightControl: DjiFcSubscription_GetLatestValueOfTopic return {}!",
-                               height);
-
-                        auto [tag_center_x, tag_center_y] = tag.cxy;
-                        auto img_center_x = cur_image.cols / 2.0f;
-                        auto img_center_y = cur_image.rows / 2.0f;
-
-                        float norm_x = (tag_center_x - img_center_x) / img_center_x;
-                        float norm_y = (tag_center_y - img_center_y) / img_center_y;
-
-                        action.x = std::clamp(-norm_x * height / 5.0f, -0.5f, 0.5f);
-                        action.y = std::clamp(norm_y * height / 5.0f, -0.5f, 0.5f);
-                        action.z = std::clamp(-height / 5.0f, -0.5f, -0.1f);
-                        action.yaw = 0.0f;
-                    }
-
-                    qDebug("FlightControl: JoystickAction: {},{},{},{}", action.x, action.y,
-                           action.z, action.yaw);
-                    return_code = DjiFlightController_ExecuteJoystickAction(action);
-                    if (0 != return_code) {
-                        qError("FlightControl: DjiFlightController_ExecuteJoystickAction "
-                               "return {:#x}!",
-                               return_code);
-                    }
-                }
-
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
-            }
+            this->land1();
+            this->land2();
 
             return_code = DjiFlightController_ReleaseJoystickCtrlAuthority();
             if (return_code != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
@@ -3080,17 +2733,18 @@ struct impl : public object {
     }
 };
 
-};  // namespace __flight_control__
+};  // namespace
 
 int32_t flight_control::init(init_parameter const& parameter) {
     int32_t result{0};
 
     do {
-        using namespace __flight_control__;
-        auto impl_ptr = std::make_shared<impl>();
+        auto impl_ptr = std::make_shared<flight_control_impl>();
 
         impl_ptr->psdk_register_ptr = ref_singleton<psdk::register2>::make();
-        impl_ptr->register_ptr = ref_singleton<impl::register2>::make();
+        impl_ptr->register_ptr = ref_singleton<flight_control_impl::register2>::make();
+        impl_ptr->ir_camera_register_ptr = ir_camera_register::make();
+        impl_ptr->data_subcriber_ptr = parameter.data_subcriber_ptr;
 
         result = DjiFlightController_SetRCLostAction(DJI_FLIGHT_CONTROLLER_RC_LOST_ACTION_GOHOME);
         if (0 != result) {
@@ -3101,7 +2755,7 @@ int32_t flight_control::init(init_parameter const& parameter) {
             +[](T_DjiWaypointV2MissionEventPush event) -> T_DjiReturnCode {
                 if (event.event == 0x11) {
                     auto ref = ref_singleton<self>::make();
-                    auto impl_ptr = std::static_pointer_cast<impl>(ref->impl_ptr);
+                    auto impl_ptr = std::static_pointer_cast<flight_control_impl>(ref->impl_ptr);
                     if (impl_ptr != nullptr) {
                         impl_ptr->route_finished = True;
                     }
@@ -3117,10 +2771,10 @@ int32_t flight_control::init(init_parameter const& parameter) {
 
         result = DjiWaypointV2_RegisterMissionStateCallback(
             +[](T_DjiWaypointV2MissionStatePush state) -> T_DjiReturnCode {
-                qTrace("FlightControl: DjiWaypointV2_RegisterMissionStateCallback: state: "
-                       "[{},{:#x},{}m/s]!",
-                       state.curWaypointIndex, state.state,
-                       static_cast<float32_t>(state.velocity) / 100.0f);
+                // qTrace("FlightControl: DjiWaypointV2_RegisterMissionStateCallback: state: "
+                //        "[{},{:#x},{}m/s]!",
+                //        state.curWaypointIndex, state.state,
+                //        static_cast<float32_t>(state.velocity) / 100.0f);
                 return DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
             });
         if (0 != result) {
@@ -3131,7 +2785,7 @@ int32_t flight_control::init(init_parameter const& parameter) {
         impl_ptr->init_parameter = parameter;
         impl_ptr->future = std::async(
             std::launch::async,
-            [](impl* impl_ptr) -> void {
+            [](flight_control_impl* impl_ptr) -> void {
                 self::action action{self::action::no_action};
                 self::parameter::ptr parameter_ptr{nullptr};
 
@@ -3182,8 +2836,7 @@ int32_t flight_control::set_action(action action,
     int32_t result{self::result::ok};
 
     do {
-        using namespace __flight_control__;
-        auto impl_ptr = std::static_pointer_cast<impl>(self::impl_ptr);
+        auto impl_ptr = std::static_pointer_cast<flight_control_impl>(self::impl_ptr);
         if (impl_ptr == nullptr) {
             result = static_cast<int32_t>(error::unknown);
             break;

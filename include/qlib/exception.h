@@ -8,6 +8,7 @@
 
 #include <exception>
 
+#include "qlib/object.h"
 #include "spdlog/fmt/fmt.h"
 
 namespace qlib {
@@ -27,7 +28,7 @@ public:
 
 #define THROW_EXCEPTION(ok, format_str, ...)                                                       \
     do {                                                                                           \
-        if (!(ok)) {                                                                               \
+        if (!(qlib::likely(ok))) {                                                                 \
             throw qlib::exception(__FILE__, __LINE__,                                              \
                                   fmt::format(format_str, ##__VA_ARGS__).c_str());                 \
         }                                                                                          \

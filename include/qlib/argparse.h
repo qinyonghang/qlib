@@ -13,19 +13,9 @@ namespace qlib {
 namespace argparse {
 
 template <class T, class Enable = void>
-struct convert;
-
-template <>
-struct convert<string_t> : public object {
-    static string_t call(std::string_view s) { return string_t{s}; }
+struct convert : public object {
+    static T call(std::string_view s) { return T{s}; }
 };
-
-#ifdef _GLIBCXX_FILESYSTEM
-template <>
-struct convert<std::filesystem::path> : public object {
-    static std::filesystem::path call(std::string_view s) { return std::filesystem::path{s}; }
-};
-#endif
 
 template <>
 struct convert<bool_t> : public object {
@@ -219,11 +209,11 @@ protected:
     std::vector<argument::ptr> optional_arguments;
 
     static bool_t starts_with(std::string_view s, std::string_view prefix) {
-        return s.size() >= prefix.size() && std::equal(prefix.begin(), prefix.end(), s.begin());
+        return s.substr(0, prefix.size()) == prefix;
     }
 
     static bool_t ends_with(std::string_view s, std::string_view suffix) {
-        return s.size() >= suffix.size() && std::equal(suffix.rbegin(), suffix.rend(), s.rbegin());
+        return s.substr(s.size() - suffix.size()) == suffix;
     }
 
     static argument::ptr find(std::vector<argument::ptr> const& args, std::string_view name) {
