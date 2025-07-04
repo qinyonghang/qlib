@@ -89,13 +89,13 @@ public:
     template <class T>
     using uptr = qlib::uptr<T>;
 
-    virtual ~object() = default;
+    ~object() noexcept = default;
 
 protected:
-    object() = default;
+    constexpr object() noexcept = default;
 };
 
-static inline bool likely(bool ok) {
+constexpr static inline bool likely(bool ok) {
 #ifdef __glibc_likely
     return __glibc_likely(ok);
 #else
@@ -103,7 +103,7 @@ static inline bool likely(bool ok) {
 #endif
 }
 
-static inline bool unlikely(bool ok) {
+constexpr static inline bool unlikely(bool ok) {
 #ifdef __glibc_unlikely
     return __glibc_unlikely(ok);
 #else
@@ -112,7 +112,7 @@ static inline bool unlikely(bool ok) {
 }
 
 template <class T, class... Ts>
-struct is_one_of : std::disjunction<std::is_same<T, Ts>...> {};
+struct is_one_of final : std::disjunction<std::is_same<T, Ts>...> {};
 
 template <class T, class... Ts>
 inline constexpr bool is_one_of_v = is_one_of<T, Ts...>::value;

@@ -6,21 +6,19 @@
 #include <iostream>
 
 #include "qlib/argparse.h"
-#include "qlib/module.h"
 
 namespace qlib {
 
-class application : public module<application> {
+class application : public object {
 public:
     using self = application;
     using ptr = std::shared_ptr<self>;
-    using base = module<self>;
+    using base = object;
 
 protected:
     static inline std::atomic_bool exit{false};
 
-    template <class String>
-    application(String&& name) : base(std::forward<String>(name)) {
+    application() {
         signal(SIGINT, +[](int signal) { self::exit = true; });
     }
 

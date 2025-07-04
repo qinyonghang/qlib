@@ -25,10 +25,10 @@ public:
         return std::make_shared<self>(topic, std::in_place_type<T>);
     }
 
-    publisher() = default;
+    explicit publisher() noexcept = default;
 
     template <class T>
-    publisher(string_t const& topic, std::in_place_type_t<T> const& = std::in_place_type<T>) {
+    explicit publisher(string_t const& topic, std::in_place_type_t<T> const& = std::in_place_type<T>) {
         int32_t result{init<T>(topic)};
         THROW_EXCEPTION(0 == result, "init return {}... ", result);
     }
@@ -55,7 +55,7 @@ public:
                                       std::in_place_type<T>);
     }
 
-    explicit subscriber() = default;
+    explicit subscriber() noexcept = default;
 
     template <class T, class Callback>
     explicit subscriber(string_t const& topic,

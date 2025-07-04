@@ -14,15 +14,14 @@
 namespace qlib {
 class exception final : public std::exception {
 protected:
-    constexpr static auto max_length = 512u;
-    char __impl[max_length];
+    char _impl[512u];
 
 public:
     exception(char const* file, int line, char const* message) {
-        snprintf(__impl, sizeof(__impl), "[%s:%d]%s", file, line, message);
+        snprintf(_impl, sizeof(_impl), "[%s:%d]%s", file, line, message);
     }
 
-    char const* what() const noexcept override { return __impl; }
+    char const* what() const noexcept override { return _impl; }
 };
 };  // namespace qlib
 
