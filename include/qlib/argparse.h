@@ -72,7 +72,7 @@ public:
     argument(String&& name = "default") : _name{std::forward<String>(name)} {}
 
     template <class String, class T, class String2>
-    argument(String name, T&& default_value, String2&& help = "")
+    argument(String&& name, T&& default_value, String2&& help = "")
             : _name{std::forward<String&&>(name)}, _default_value{std::forward<T&&>(default_value)},
               _help{std::forward<String2&&>(help)} {}
 

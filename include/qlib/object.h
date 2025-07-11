@@ -30,11 +30,11 @@ using sptr = std::shared_ptr<T>;
 template <class T>
 using uptr = std::unique_ptr<T>;
 
-struct position {
-    float64_t longitude;
-    float64_t latitude;
-    float64_t relative_height; /*! relative to takeoff height*/
-};
+// struct position {
+//     float64_t longitude;
+//     float64_t latitude;
+//     float64_t relative_height; /*! relative to takeoff height*/
+// };
 
 // enum : int32_t {
 //     OK = 0,
