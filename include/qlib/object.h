@@ -5,9 +5,12 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <any>
 
 namespace qlib {
+using any_t = std::any;
 using string_t = std::string;
+using string_view_t = std::string_view;
 using byte = std::uint8_t;
 using int8_t = std::int8_t;
 using uint8_t = std::uint8_t;
@@ -60,6 +63,8 @@ enum class error : int32_t {
 class object {
 public:
     using string_t = qlib::string_t;
+    using string_view_t = qlib::string_view_t;
+    using any_t = qlib::any_t;
     using int8_t = qlib::int8_t;
     using uint8_t = qlib::uint8_t;
     using int16_t = qlib::int16_t;

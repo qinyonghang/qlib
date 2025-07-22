@@ -6,12 +6,12 @@
 namespace qlib {
 template <class T, class Enable = void>
 struct converter : public object {
-    static T call(std::string_view s) { return T{s}; }
+    static T decode(std::string_view s) { return T{s}; }
 };
 
 template <>
 struct converter<bool_t> : public object {
-    static bool_t call(std::string_view s) {
+    static bool_t decode(std::string_view s) {
         bool_t result{False};
 
         if (s == "true" || s == "True") {
@@ -39,7 +39,7 @@ struct converter<T,
                                               uint32_t,
                                               uint64_t,
                                               size_t>>> : public object {
-    static T call(std::string_view s) {
+    static T decode(std::string_view s) {
         T result;
         auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), result);
         THROW_EXCEPTION(ec == std::errc{} && ptr != nullptr && *ptr == '\0',

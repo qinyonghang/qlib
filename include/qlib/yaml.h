@@ -48,11 +48,11 @@ public:
     }
 };
 
-template <>
-inline position loader::get<position>(node const& node) {
-    auto value = get<std::array<float64_t, 3u>>(node);
-    return position{value[0], value[1], value[2]};
-}
+// template <>
+// inline position loader::get<position>(node const& node) {
+//     auto value = get<std::array<float64_t, 3u>>(node);
+//     return position{value[0], value[1], value[2]};
+// }
 
 #ifdef PSDK_IMPLEMENTATION
 template <>
