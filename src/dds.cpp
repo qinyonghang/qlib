@@ -43,8 +43,8 @@ static DynamicType::_ref_type create(Builder&& builder) {
 }
 
 template <>
-struct convert<string_t> : public object {
-    using value_type = string_t;
+struct convert<std::string> : public object {
+    using value_type = std::string;
 
     static DynamicType::_ref_type make_type_ptr() {
         return create([](DynamicTypeBuilderFactory::_ref_type type_factory) {
@@ -63,9 +63,36 @@ struct convert<string_t> : public object {
     }
 
     static void get(value_type* value_ptr, DynamicData::_ref_type const& data_ptr) {
-        string_t str;
+        std::string str;
         data_ptr->get_string_value(str, 0u);
         *value_ptr = std::move(str);
+    }
+};
+
+template <>
+struct convert<string_t> : public object {
+    using value_type = string_t;
+
+    static DynamicType::_ref_type make_type_ptr() {
+        return create([](DynamicTypeBuilderFactory::_ref_type type_factory) {
+            return type_factory->create_string_type(static_cast<uint32_t>(LENGTH_UNLIMITED))
+                ->build();
+        });
+    }
+
+    static DynamicData::_ref_type make_data_ptr() {
+        auto data_factory = DynamicDataFactory::get_instance();
+        return data_factory->create_data(make_type_ptr());
+    }
+
+    static void set(DynamicData::_ref_type* data_ptr, value_type const& value) {
+        (*data_ptr)->set_string_value(0u, value.data());
+    }
+
+    static void get(value_type* value_ptr, DynamicData::_ref_type const& data_ptr) {
+        std::string str;
+        data_ptr->get_string_value(str, 0u);
+        *value_ptr = str.c_str();
     }
 };
 
@@ -179,7 +206,7 @@ int32_t publisher::init(string_t const& topic) {
         {
             TopicQos qos{TOPIC_QOS_DEFAULT};
             impl_ptr->participant->get_default_topic_qos(qos);
-            impl_ptr->topic = impl_ptr->participant->create_topic(topic, type.get_type_name(), qos);
+            impl_ptr->topic = impl_ptr->participant->create_topic(topic.data(), type.get_type_name(), qos);
             if (impl_ptr->topic == nullptr) {
                 result = static_cast<int32_t>(error::unknown);
                 break;
@@ -294,7 +321,7 @@ int32_t subscriber::init(string_t const& topic, std::function<void(T&&)> const& 
         {
             TopicQos qos{TOPIC_QOS_DEFAULT};
             impl_ptr->participant->get_default_topic_qos(qos);
-            impl_ptr->topic = impl_ptr->participant->create_topic(topic, type.get_type_name(), qos);
+            impl_ptr->topic = impl_ptr->participant->create_topic(topic.data(), type.get_type_name(), qos);
             if (impl_ptr->topic == nullptr) {
                 result = static_cast<int32_t>(error::unknown);
                 break;
@@ -322,6 +349,7 @@ int32_t subscriber::init(string_t const& topic, std::function<void(T&&)> const& 
     return result;
 }
 
+template int32_t publisher::publish<std::string>(std::string const&);
 template int32_t publisher::publish<string_t>(string_t const&);
 template int32_t publisher::publish<int8_t>(int8_t const&);
 template int32_t publisher::publish<int16_t>(int16_t const&);
@@ -368,6 +396,7 @@ auto register2 = []() {
     extern void (*g_dds)(void);
     THROW_EXCEPTION(force_link_deps, "g_dds is nullptr... ");
     if (g_dds == nullptr) {
+        test<std::string>();
         test<string_t>();
         test<int8_t>();
         test<int16_t>();

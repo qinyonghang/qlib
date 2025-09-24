@@ -4,8 +4,52 @@ if(NOT DEFINED PROJECT_NAME)
 project(qlib C CXX)
 endif()
 
-# message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-# message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}.")
+message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}.")
+
+add_library(qlib INTERFACE)
+add_library(qlib::qlib ALIAS qlib)
+
+set_target_properties(qlib PROPERTIES 
+    INTERFACE_INCLUDE_DIRECTORIES 
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:include>"
+)
+
+enable_testing()
+
+option(BUILD_EXAMPLES "Build examples" ON)
+option(ENABLE_ASAN "Enable address sanitizer" OFF)
+
+if (BUILD_EXAMPLES)
+file(GLOB examples ${CMAKE_CURRENT_LIST_DIR}/examples/*)
+foreach(example ${examples})
+    if (IS_DIRECTORY ${example})
+        add_subdirectory(${example})
+    endif ()
+endforeach()
+endif()
+
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)
+
+install(TARGETS qlib 
+        EXPORT qlib
+        INCLUDES DESTINATION include)
+
+
+install(EXPORT qlib 
+        FILE qlib-targets.cmake
+        DESTINATION lib/cmake/qlib)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/qlib-config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/qlib-config.cmake"
+    INSTALL_DESTINATION lib/cmake/qlib
+)
+
+# 安装配置文件
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/qlib-config.cmake"
+        DESTINATION lib/cmake/qlib)
 
 # add_library(qlib STATIC src/qlib.cpp)
 # add_library(qlib::qlib ALIAS qlib)
@@ -52,43 +96,44 @@ endif()
 #     include(${cmake_file})
 # endforeach()
 
-option(BUILD_PYTHON_MODULE "Build Python Module!" OFF)
+# option(BUILD_PYTHON_MODULE "Build Python Module!" OFF)
 
-if (BUILD_PYTHON_MODULE)
+# if (BUILD_PYTHON_MODULE)
 
-set(ROOT_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE STRING "Root directory")
-include(${ROOT_DIR}/cmake/defines.cmake)
-include(${ROOT_DIR}/cmake/python3.cmake)
-include(${ROOT_DIR}/cmake/project/boost.cmake)
-include(${ROOT_DIR}/cmake/project/logger.cmake)
-include(${ROOT_DIR}/cmake/project/dds.cmake)
+# set(ROOT_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE STRING "Root directory")
+# include(${ROOT_DIR}/cmake/defines.cmake)
+# include(${ROOT_DIR}/cmake/python3.cmake)
+# include(${ROOT_DIR}/cmake/project/boost.cmake)
+# include(${ROOT_DIR}/cmake/project/logger.cmake)
+# include(${ROOT_DIR}/cmake/project/dds.cmake)
 
-add_library(qlib_python MODULE src/dds_python.cpp)
+# add_library(qlib_python MODULE src/dds_python.cpp)
 
-set_target_properties(qlib_python PROPERTIES PREFIX "")
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-set_target_properties(qlib_python PROPERTIES SUFFIX ".pyd")
-endif()
+# set_target_properties(qlib_python PROPERTIES PREFIX "")
+# if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+# set_target_properties(qlib_python PROPERTIES SUFFIX ".pyd")
+# endif()
 
-set_target_properties(qlib_python PROPERTIES
-    C_STANDARD 17
-    C_STANDARD_REQUIRED ON
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
-)
+# set_target_properties(qlib_python PROPERTIES
+#     C_STANDARD 17
+#     C_STANDARD_REQUIRED ON
+#     CXX_STANDARD 17
+#     CXX_STANDARD_REQUIRED ON
+# )
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-target_compile_options(qlib_python PRIVATE
-    $<$<CONFIG:Release>:-O3>
-    $<$<CONFIG:Debug>:-g -O0>
-    -Wall
-)
-endif ()
+# if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+# target_compile_options(qlib_python PRIVATE
+#     $<$<CONFIG:Release>:-O3>
+#     $<$<CONFIG:Debug>:-g -O0>
+#     -Wall
+# )
+# endif ()
 
-target_include_directories(qlib_python PRIVATE ${Python3_INCLUDE_DIRS})
-target_link_libraries(qlib_python PRIVATE qlib::boost qlib::dds qlib::logger)
+# target_include_directories(qlib_python PRIVATE ${Python3_INCLUDE_DIRS})
+# target_link_libraries(qlib_python PRIVATE qlib::boost qlib::dds qlib::logger)
 
-endif()
+# endif()
 
-set(ROOT_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE STRING "Root directory")
-include(${ROOT_DIR}/cmake/tests.cmake)
+# set(ROOT_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE STRING "Root directory")
+# include(${ROOT_DIR}/cmake/tests.cmake)
+

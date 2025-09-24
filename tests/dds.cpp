@@ -20,7 +20,7 @@ public:
     }
 
     template <class... Args>
-    Application(Args&&... args) : application{module_name} {
+    Application(Args&&... args) {
         int32_t result{init(std::forward<Args>(args)...)};
         if (0 != result) {
             std::exit(result);

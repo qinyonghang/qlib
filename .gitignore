@@ -10,4 +10,5 @@
 **.sln
 **.egg-info
 package/*.so
+logs/
 third_party/

@@ -73,7 +73,7 @@ int32_t writer::init(init_parameter const& parameter) {
     int32_t result{0u};
 
     do {
-        qInfo("RTSP Writer Parameter: {}!", parameter);
+        // qInfo("RTSP Writer Parameter: {}!", parameter);
 
         auto impl_ptr = std::make_shared<impl>();
 

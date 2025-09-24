@@ -9,6 +9,7 @@ if (BUILD_TEST)
     include(${ROOT_DIR}/cmake/project/logger.cmake)
     include(${ROOT_DIR}/cmake/project/dds.cmake)
     include(${ROOT_DIR}/cmake/project/ffmpeg.cmake)
+    include(${ROOT_DIR}/cmake/project/json.cmake)
 
     set(out_dir ${CMAKE_CURRENT_BINARY_DIR})
     file(GLOB tests ${PROJECT_SOURCE_DIR}/tests/*.cpp)
@@ -24,7 +25,14 @@ if (BUILD_TEST)
             CXX_STANDARD_REQUIRED ON
             RUNTIME_OUTPUT_DIRECTORY "${out_dir}"
         )
-        target_link_libraries(${test_name} PRIVATE qlib::dds qlib::logger qlib::argparse qlib::ffmpeg)
+        target_link_libraries(${test_name} PRIVATE
+            qlib::dds
+            qlib::logger
+            qlib::argparse
+            qlib::ffmpeg
+            qlib::qlib
+            -lbenchmark
+        )
         if(MSVC)
             target_compile_options(${test_name} PRIVATE /utf-8)
         endif()

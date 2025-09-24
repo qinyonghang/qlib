@@ -1,9 +1,9 @@
 import argparse
 import os
 import platform
-import sys
+# import sys
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.downloader import Downloader
 
 

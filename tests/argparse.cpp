@@ -11,7 +11,7 @@ public:
     using self = Application;
     using ptr = sptr<self>;
 
-    constexpr static inline auto module_name = "ArgParseTest";
+    constexpr static inline auto module_name = "ArgParser";
 
     template <class... Args>
     static ptr make(Args&&... args) {
@@ -19,7 +19,7 @@ public:
     }
 
     template <class... Args>
-    Application(Args&&... args) : application{module_name} {
+    Application(Args&&... args) {
         int32_t result{init(std::forward<Args>(args)...)};
         if (0 != result) {
             std::exit(result);

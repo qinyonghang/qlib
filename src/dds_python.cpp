@@ -100,8 +100,6 @@ public:
 
     qlib::id id() const override { return qlib::id::make<T>(); }
 
-    // static qlib::id id() { return qlib::id::make<T>(); }
-
 protected:
     T value;
 };
@@ -176,7 +174,11 @@ public:
     qlib::id value_id() const { return self::_value_id; }
 
     template <class T>
-    std::vector<T> const& to() const;
+    std::vector<T> const& to() const {
+        auto vec = std::static_pointer_cast<vector<T>>(self::_obj);
+        THROW_EXCEPTION(vec != nullptr, "TypeError!");
+        return vec->to();
+    }
 
 protected:
     class object : public qlib::object {
@@ -235,56 +237,6 @@ protected:
     qlib::id _value_id;
     self::object::ptr _obj{nullptr};
 };  // namespace dds
-
-template <>
-std::vector<int8_t> const& sequence::to<int8_t>() const {
-    return std::static_pointer_cast<vector<int8_t>>(_obj)->to();
-}
-
-template <>
-std::vector<int16_t> const& sequence::to<int16_t>() const {
-    return std::static_pointer_cast<vector<int16_t>>(_obj)->to();
-}
-
-template <>
-std::vector<int32_t> const& sequence::to<int32_t>() const {
-    return std::static_pointer_cast<vector<int32_t>>(_obj)->to();
-}
-
-template <>
-std::vector<int64_t> const& sequence::to<int64_t>() const {
-    return std::static_pointer_cast<vector<int64_t>>(_obj)->to();
-}
-
-template <>
-std::vector<uint8_t> const& sequence::to<uint8_t>() const {
-    return std::static_pointer_cast<vector<uint8_t>>(_obj)->to();
-}
-
-template <>
-std::vector<uint16_t> const& sequence::to<uint16_t>() const {
-    return std::static_pointer_cast<vector<uint16_t>>(_obj)->to();
-}
-
-template <>
-std::vector<uint32_t> const& sequence::to<uint32_t>() const {
-    return std::static_pointer_cast<vector<uint32_t>>(_obj)->to();
-}
-
-template <>
-std::vector<uint64_t> const& sequence::to<uint64_t>() const {
-    return std::static_pointer_cast<vector<uint64_t>>(_obj)->to();
-}
-
-template <>
-std::vector<float32_t> const& sequence::to<float32_t>() const {
-    return std::static_pointer_cast<vector<float32_t>>(_obj)->to();
-}
-
-template <>
-std::vector<float64_t> const& sequence::to<float64_t>() const {
-    return std::static_pointer_cast<vector<float64_t>>(_obj)->to();
-}
 
 class publisher : public object {
 public:

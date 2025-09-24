@@ -1,0 +1,35 @@
+log:
+  level: 0
+
+  console:
+    enable: true
+    level: 0
+
+  file:
+    enable: true
+    level: 0
+    path: auto
+
+audio:
+  reader:
+    publish: "AudioReader"
+    output_samples:
+      sample_rate: 16000
+
+kws:
+  subscriber:
+    audio: "AudioReader"
+  publisher: "wakeup"
+  sample_rate: 16000
+  model:
+    transducer:
+      encoder: "build/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01-mobile/encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx"
+      decoder: "build/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01-mobile/decoder-epoch-12-avg-2-chunk-16-left-64.onnx"
+      joiner: "build/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01-mobile/joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx"
+    tokens: "build/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01-mobile/tokens.txt"
+    debug: false
+  keywords:
+    path: "build/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01-mobile/keywords.txt"
+
+nlu:
+  

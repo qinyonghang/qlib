@@ -1,6 +1,7 @@
-if (NOT LOGGER_CMAKE_INCLUDED)
+# if (NOT LOGGER_CMAKE_INCLUDED)
+if (NOT TARGET qlib::logger)
 
-set(LOGGER_CMAKE_INCLUDED TRUE)
+# set(LOGGER_CMAKE_INCLUDED TRUE)
 
 include(${ROOT_DIR}/cmake/find_thirdparty.cmake)
 find_thirdparty(spdlog
