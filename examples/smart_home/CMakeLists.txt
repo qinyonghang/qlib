@@ -84,5 +84,14 @@ target_link_libraries(${TARGET_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/sherpa-onnx/install/lib/libcargs.a
 )
 
+if (NOT EXISTS ${CMAKE_BINARY_DIR}/kws)
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/kws
+    ${CMAKE_BINARY_DIR}/kws
+    COMMENT "Copying kws directory to ${CMAKE_BINARY_DIR}"
+)
+endif()
+
 install(TARGETS ${TARGET_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${TARGET_NAME})
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config.json DESTINATION ${CMAKE_INSTALL_PREFIX}/${TARGET_NAME})

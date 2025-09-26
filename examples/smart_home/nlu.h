@@ -238,6 +238,60 @@ public:
     }
 };
 
+    // auto _nlu_init_(yaml_view_t const& node) {
+    //     // _json_text = string_t::from_file(config_path);
+    //     // auto json_error = json::parse(&_config, _json_text.begin(), _json_text.end());
+    //     // if (0 != json_error) {
+    //     //     _logger->error("json::parse return {}!", json_error);
+    //     //     result = -1;
+    //     //     break;
+    //     // }
+    //     // _logger->trace("config: {}", _config.to());
+
+    //     // NluParser::rules_type rules;
+    //     // for (auto& rule : _config["rules"].array()) {
+    //     //     NluParser::results_type results;
+    //     //     for (auto& result : rule["results"].array()) {
+    //     //         results.emplace_back(NluParser::result_type{
+    //     //             .location = result["location"].get<string_view_t>(),
+    //     //             .device = result["device"].get<string_view_t>(),
+    //     //             .action = result["action"].get<string_view_t>(),
+    //     //         });
+    //     //     }
+    //     //     rules.emplace_back(NluParser::rule_type{
+    //     //         .name = rule["name"].get<string_view_t>(),
+    //     //         .pattern = rule["pattern"].get<string_view_t>(),
+    //     //         .results = move(results),
+    //     //     });
+    //     // }
+
+    //     // _nlu_parser = make_unique<NluParser>(move(rules));
+
+    //     // std::string input;
+    //     // while (!_exit) {
+    //     //     struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
+    //     //     if (poll(&pfd, 1, 100) > 0 && (pfd.revents & POLLIN)) {
+    //     //         std::getline(std::cin, input);
+    //     //         NluParser::results_type results;
+    //     //         {
+    //     //             profile _profile{"nlu parser"};
+    //     //             results = _nlu_parser->operator()(
+    //     //                 string_view_t{input.data(), input.data() + input.size()});
+    //     //         }
+    //     //         if (results.size() > 0) {
+    //     //             for (auto& result : results) {
+    //     //                 std::cout << "Result(" << result.device << ":" << result.location << ":"
+    //     //                           << result.action << ")" << std::endl;
+    //     //             }
+    //     //         } else {
+    //     //             std::cout << "No result" << std::endl;
+    //     //         }
+    //     //     }
+    //     // }
+    //     // return 0;
+    //     return True;
+    // }
+
 };  // namespace nlu
 
 };  // namespace qlib

@@ -136,6 +136,21 @@ public:
     }
 };
 
+#ifdef _BASIC_STRING_H
+template <class _Char>
+class converter<std::basic_string<_Char>> : public object {
+public:
+    template <class Iter1, class Iter2>
+    NODISCARD FORCE_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+        if (*__first == '"' && *(__last - 1) == '"') {
+            ++__first;
+            --__last;
+        }
+        return std::basic_string<_Char>(__first, __last);
+    }
+};
+#endif
+
 template <class Yaml>
 class parser;
 
@@ -174,6 +189,18 @@ protected:
     FORCE_INLINE CONSTEXPR auto const& _array_() const noexcept { return *(array_type*)(&_impl); }
     FORCE_INLINE CONSTEXPR auto const& _object_() const noexcept { return *(object_type*)(&_impl); }
     FORCE_INLINE CONSTEXPR auto const& _view_() const noexcept { return *(view_type*)(&_impl); }
+
+    template <class _uKey = key_type>
+    FORCE_INLINE CONSTEXPR enable_if_t<is_same_v<_uKey, string_view>, string_view> _key_init_(
+        string_view __key) {
+        return __key;
+    }
+
+    template <class _uKey = key_type>
+    FORCE_INLINE CONSTEXPR enable_if_t<is_same_v<_uKey, string_type>, string_type> _key_init_(
+        string_view __key) {
+        return string_type(__key.begin(), __key.end(), _allocator_());
+    }
 
 public:
     value(self const&) = delete;
@@ -242,7 +269,8 @@ public:
                 return __node.value;
             }
         }
-        __throw("no key");
+        _object_().emplace_back(_key_init_(__key), self());
+        return _object_().back().value;
     }
 
     NODISCARD FORCE_INLINE CONSTEXPR auto const& operator[](string_view __key) const {
@@ -521,8 +549,7 @@ public:
                             break;
                         }
                         ++__first;
-                        while (__first < __last &&
-                               _char_helper.type(*__first) == char_helper::space) {
+                        while (__first < __last && *__first == ' ') {
                             ++__first;
                         }
                         __first = _parse_value_(&__value, __first, __last);

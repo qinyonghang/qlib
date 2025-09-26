@@ -15,18 +15,22 @@ set_target_properties(qlib PROPERTIES
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:include>"
 )
 
-enable_testing()
-
 option(BUILD_EXAMPLES "Build examples" ON)
+option(BUILD_TESTS "Build tests" ON)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
 
 if (BUILD_EXAMPLES)
 file(GLOB examples ${CMAKE_CURRENT_LIST_DIR}/examples/*)
 foreach(example ${examples})
-    if (IS_DIRECTORY ${example})
+    if (IS_DIRECTORY ${example} AND EXISTS ${example}/CMakeLists.txt)
         add_subdirectory(${example})
     endif ()
 endforeach()
+endif()
+
+if (BUILD_TESTS)
+enable_testing()
+add_subdirectory(tests)
 endif()
 
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)

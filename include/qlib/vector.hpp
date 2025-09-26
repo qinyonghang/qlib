@@ -54,24 +54,50 @@ protected:
 
     template <class _uValue = value_type>
     FORCE_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _move_(
-        value_type* impl) {
-        __builtin_memmove(impl, _impl, _size * sizeof(value_type));
+        value_type* __dst, value_type* __src, size_type __size) noexcept {
+        __builtin_memmove(__dst, __src, __size * sizeof(value_type));
     }
 
     template <class _uValue = value_type>
     FORCE_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _move_(
-        value_type* impl) {
-        for (size_type i = 0; i < _size; ++i) {
-            _allocator_().construct(impl + i, move(_impl[i]));
-            _allocator_().destroy(_impl + i);
+        value_type* __dst, value_type* __src, size_type __size) noexcept {
+        for (size_type i = 0; i < __size; ++i) {
+            _allocator_().construct(&__dst[i], move(__src[i]));
+        }
+    }
+
+    template <class _uValue = value_type>
+    FORCE_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _copy_(
+        value_type* __dst, value_type* __src, size_type __size) const noexcept {
+        __builtin_memmove(__dst, __src, __size * sizeof(value_type));
+    }
+
+    template <class _uValue = value_type>
+    FORCE_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _copy_(
+        value_type* __dst, value_type* __src, size_type __size) const noexcept {
+        for (size_type i = 0; i < __size; ++i) {
+            _allocator_().construct(&__dst[i], __src[i]);
+        }
+    }
+
+    template <class _uValue = value_type>
+    FORCE_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _destroy_(
+        value_type* __src, size_type __size) noexcept {}
+
+    template <class _uValue = value_type>
+    FORCE_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _destroy_(
+        value_type* __src, size_type __size) noexcept {
+        for (size_type i = 0; i < __size; ++i) {
+            _allocator_().destroy(&__src[i]);
         }
     }
 
     INLINE void _update_capacity(size_type capacity) {
-        auto impl = _allocator_().template allocate<value_type>(capacity);
-        _move_(impl);
+        auto __impl = _allocator_().template allocate<value_type>(capacity);
+        _move_(__impl, _impl, _size);
+        _destroy_(_impl, _size);
         _allocator_().template deallocate<value_type>(_impl, _capacity);
-        _impl = impl;
+        _impl = __impl;
         _capacity = capacity;
     }
 
@@ -96,25 +122,7 @@ public:
     INLINE value(value const& other) : base(other), _size(other._size), _capacity(other._capacity) {
         if (likely(_size > 0)) {
             _impl = _allocator_().template allocate<value_type>(_capacity);
-            if CONSTEXPR (is_trivially_copyable_v<value_type>) {
-                __builtin_memmove(_impl, other._impl, _size * sizeof(value_type));
-            } else {
-                size_type i = 0;
-                try {
-                    for (; i < _size; ++i) {
-                        _allocator_().construct(_impl + i, other._impl[i]);
-                    }
-                } catch (...) {
-                    for (size_type j = 0; j < i; ++j) {
-                        _allocator_().destroy(_impl + j);
-                    }
-                    _allocator_().template deallocate<value_type>(_impl, _size);
-                    _impl = nullptr;
-                    _size = 0;
-                    _capacity = 0;
-                    throw;
-                }
-            }
+            _copy_(_impl, other._impl, other._size);
         }
     }
 
@@ -127,11 +135,7 @@ public:
     }
 
     INLINE ~value() noexcept(is_nothrow_destructible_v<allocator_type>) {
-        if CONSTEXPR (!is_trivially_copyable_v<value_type>) {
-            for (size_type i = 0; i < _size; ++i) {
-                _allocator_().destroy(_impl + i);
-            }
-        }
+        _destroy_(_impl, _size);
         _allocator_().template deallocate<value_type>(_impl, _capacity);
         _impl = nullptr;
         _size = 0;
