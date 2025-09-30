@@ -3,7 +3,7 @@
         {
             "name": "turn_on_living_room_light",
             "pattern": "(打开|把)客厅(的)?灯(打开)?",
-            "results": [
+            "commands": [
                 {
                     "location": "living_room",
                     "device": "light",
@@ -14,7 +14,7 @@
         {
             "name": "turn_off_living_room_light",
             "pattern": "(关闭|关掉|把)客厅(的)?灯(关闭|关掉)?",
-            "results": [
+            "commands": [
                 {
                     "location": "living_room",
                     "device": "light",
@@ -25,7 +25,7 @@
         {
             "name": "adjust_living_room_light_brightness",
             "pattern": "(调|把)客厅(的)?灯(亮度)?(调|设)到(\\d+)%",
-            "results": [
+            "commands": [
                 {
                     "location": "living_room",
                     "device": "light",
@@ -37,7 +37,7 @@
         {
             "name": "turn_on_bedroom_light",
             "pattern": "(打开|把)卧室(的)?灯(打开)?",
-            "results": [
+            "commands": [
                 {
                     "location": "bedroom",
                     "device": "light",
@@ -48,7 +48,7 @@
         {
             "name": "turn_off_bedroom_light",
             "pattern": "(关闭|关掉|把)卧室(的)?灯(关闭|关掉)?",
-            "results": [
+            "commands": [
                 {
                     "location": "bedroom",
                     "device": "light",
@@ -59,7 +59,7 @@
         {
             "name": "turn_on_living_room_ac",
             "pattern": "(打开|把)客厅(的)?空调(打开)?",
-            "results": [
+            "commands": [
                 {
                     "location": "living_room",
                     "device": "air_conditioner",
@@ -70,7 +70,7 @@
         {
             "name": "turn_off_living_room_ac",
             "pattern": "(关闭|关掉|把)客厅(的)?空调(关闭|关掉)?",
-            "results": [
+            "commands": [
                 {
                     "location": "living_room",
                     "device": "air_conditioner",
@@ -81,7 +81,7 @@
         {
             "name": "set_ac_temperature",
             "pattern": "(把|调)空调(温度)?(调|设)到(\\d+)度",
-            "results": [
+            "commands": [
                 {
                     "location": "unknown",
                     "device": "air_conditioner",
@@ -93,7 +93,7 @@
         {
             "name": "increase_ac_temperature",
             "pattern": "空调(温度)调高(一|\\d+)度",
-            "results": [
+            "commands": [
                 {
                     "location": "unknown",
                     "device": "air_conditioner",
@@ -105,7 +105,7 @@
         {
             "name": "set_ac_mode_cooling",
             "pattern": "空调开(制冷|冷气)模式",
-            "results": [
+            "commands": [
                 {
                     "location": "unknown",
                     "device": "air_conditioner",
@@ -117,7 +117,7 @@
         {
             "name": "set_ac_mode_heating",
             "pattern": "空调开(制热|暖气)模式",
-            "results": [
+            "commands": [
                 {
                     "location": "unknown",
                     "device": "air_conditioner",
@@ -129,7 +129,7 @@
         {
             "name": "turn_on_living_room_tv",
             "pattern": "(打开|把)客厅(的)?电视(打开)?",
-            "results": [
+            "commands": [
                 {
                     "location": "living_room",
                     "device": "tv",
@@ -140,7 +140,7 @@
         {
             "name": "turn_off_living_room_tv",
             "pattern": "(关闭|关掉|把)客厅(的)?电视(关闭|关掉)?",
-            "results": [
+            "commands": [
                 {
                     "location": "living_room",
                     "device": "tv",
@@ -151,7 +151,7 @@
         {
             "name": "adjust_tv_volume_up",
             "pattern": "(把|调)电视(音量)调大(一点)?",
-            "results": [
+            "commands": [
                 {
                     "location": "unknown",
                     "device": "tv",
@@ -162,7 +162,7 @@
         {
             "name": "adjust_tv_volume_down",
             "pattern": "(把|调)电视(音量)调小(一点)?",
-            "results": [
+            "commands": [
                 {
                     "location": "unknown",
                     "device": "tv",
@@ -173,7 +173,7 @@
         {
             "name": "change_tv_channel",
             "pattern": "电视换个台|(把|调)电视换(一|个)台",
-            "results": [
+            "commands": [
                 {
                     "location": "unknown",
                     "device": "tv",
@@ -184,7 +184,7 @@
         {
             "name": "mute_tv",
             "pattern": "电视静音|(把)电视静音",
-            "results": [
+            "commands": [
                 {
                     "location": "unknown",
                     "device": "tv",
@@ -195,7 +195,7 @@
         {
             "name": "open_living_room_curtain",
             "pattern": "(打开|把)客厅(的)?窗帘(打开|拉开)?",
-            "results": [
+            "commands": [
                 {
                     "location": "living_room",
                     "device": "curtain",
@@ -206,7 +206,7 @@
         {
             "name": "close_living_room_curtain",
             "pattern": "(关闭|把)客厅(的)?窗帘(关闭|拉上)?",
-            "results": [
+            "commands": [
                 {
                     "location": "living_room",
                     "device": "curtain",
@@ -217,7 +217,7 @@
         {
             "name": "open_bedroom_curtain",
             "pattern": "(打开|把)卧室(的)?窗帘(打开|拉开)?",
-            "results": [
+            "commands": [
                 {
                     "location": "bedroom",
                     "device": "curtain",
@@ -228,7 +228,7 @@
         {
             "name": "close_bedroom_curtain",
             "pattern": "(关闭|把)卧室(的)?窗帘(关闭|拉上)?",
-            "results": [
+            "commands": [
                 {
                     "location": "bedroom",
                     "device": "curtain",
@@ -239,7 +239,7 @@
         {
             "name": "open_curtain_halfway",
             "pattern": "(把|将)窗帘打开(一半|一半儿)",
-            "results": [
+            "commands": [
                 {
                     "location": "unknown",
                     "device": "curtain",

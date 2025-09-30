@@ -11,7 +11,7 @@ namespace yaml {
 
 using memory_policy = size_t;
 
-enum : int32_t { ok, null = 0u, object, array, copy, view, not_array, not_object };
+enum : size_t { ok, null = 0u, object, array, copy, view, not_array, not_object };
 
 template <class _Tp, class Enable = void>
 struct converter : public object {
@@ -640,6 +640,16 @@ INLINE CONSTEXPR auto parse(value<_Char, _Policy, _Allocator>* __yaml,
 }
 
 };  // namespace yaml
+
+namespace string {
+template <class Char, yaml::memory_policy Policy, class Allocator>
+INLINE CONSTEXPR value<Char, Allocator> from_yaml(yaml::value<Char, Policy, Allocator> const& node,
+                                                  size_t size = 1024u) {
+    value<Char, Allocator> result(size);
+    yaml::value<Char, Policy, Allocator>::to(result, node);
+    return result;
+}
+};  // namespace string
 
 using yaml_view_t = yaml::value<char, yaml::view>;
 using yaml_t = yaml::value<char, yaml::copy>;

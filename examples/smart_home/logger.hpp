@@ -65,7 +65,7 @@ public:
                     auto time = std::chrono::system_clock::to_time_t(now);
                     __path = fmt::format("logs/{:%Y-%m-%d_%H-%M-%S}.log", fmt::localtime(time));
                 }
-                auto __sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(__path.c_str());
+                auto __sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(__path);
                 __sink->set_level(level_type(__level));
                 __sinks.emplace_back(__sink);
             }

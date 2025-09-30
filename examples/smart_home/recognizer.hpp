@@ -54,9 +54,8 @@ protected:
     std::queue<any_t> _in_datas;
     std::condition_variable _cond_datas;
 
-    template <class _Str>
-    _Str _file_(_Str const& __file) const {
-        _Str __f{__file};
+    std::string _file_(string_view_t __file) const {
+        std::string __f{__file.begin(), __file.end()};
         if (!std::filesystem::exists(__f)) {
             char buf[1024u];
             auto len = readlink("/proc/self/exe", buf, sizeof(buf));
@@ -74,7 +73,7 @@ protected:
 
         do {
             _subscriber_audio = std::make_unique<subscriber_type>(
-                __yaml["in_audio_topic"].template get<std::string>(),
+                __yaml["in_audio_topic"].template get<string_view_t>(),
                 [this](any_t const& __data) {
                     {
                         std::lock_guard<std::mutex> __lock(_mutex);
@@ -90,20 +89,20 @@ protected:
                 __manager);
 
             _subscriber_wakeup = std::make_unique<subscriber_type>(
-                __yaml["in_wakeup_topic"].template get<std::string>(),
+                __yaml["in_wakeup_topic"].template get<string_view_t>(),
                 [this](any_t const& __data) {
                     {
                         std::lock_guard<std::mutex> __lock(_mutex);
                         _wakeup = True;
                     }
                     _cond.notify_one();
-                    auto __keyword = any_cast<std::shared_ptr<std::string>>(__data);
+                    auto __keyword = any_cast<std::shared_ptr<string_t>>(__data);
                     _logger.info("recognizer: wakeup! keyword: {}", *__keyword);
                 },
                 __manager);
 
             _publisher = std::make_unique<publisher_type>(
-                __yaml["out_topic"].template get<std::string>(), __manager);
+                __yaml["out_topic"].template get<string_view_t>(), __manager);
 
             _in_sample_rate = __yaml["in_sample_rate"].template get<uint32_t>();
             _in_max_size = __yaml["in_max_size"].template get<uint32_t>();
@@ -113,7 +112,7 @@ protected:
             {
                 vad_config __vad_config;
                 auto& __vad_yaml = __yaml["vad"];
-                auto __model_path = _file_(__vad_yaml["model"].template get<std::string>());
+                auto __model_path = _file_(__vad_yaml["model"].template get<string_view_t>());
                 if (!std::filesystem::exists(__model_path)) {
                     result = file_not_found;
                     _logger.error("recognizer: vad: model file is not exists! {}", __model_path);
@@ -130,7 +129,8 @@ protected:
                     __vad_yaml["max_speech_duration"].template get<float32_t>(8);
                 __vad_config.sample_rate = __vad_yaml["sample_rate"].template get<int32_t>(16000u);
                 __vad_config.num_threads = __vad_yaml["num_threads"].template get<int32_t>(1);
-                __vad_config.provider = __vad_yaml["provider"].template get<std::string>("cpu");
+                __vad_config.provider =
+                    __vad_yaml["provider"].template get<string_t>("cpu").c_str();
                 __vad_config.debug = __vad_yaml["debug"].template get<bool_t>(False);
                 _vad = std::make_unique<vad_type>(std::move(vad_type::Create(__vad_config, 20)));
             }
@@ -139,14 +139,14 @@ protected:
                 RecognizerConfig __config;
                 if (!__yaml["type"] || __yaml["type"].template get<string_view_t>() == "auto" ||
                     __yaml["type"].template get<string_view_t>() == "wenetspeech") {
-                    auto __model_path = _file_(__yaml["model"].template get<std::string>());
+                    auto __model_path = _file_(__yaml["model"].template get<string_view_t>());
                     if (!std::filesystem::exists(__model_path)) {
                         result = file_not_found;
                         _logger.error("recognizer: model file is not exists! {}", __model_path);
                         break;
                     }
                     __config.model_config.wenet_ctc.model = __model_path;
-                    auto __tokens_path = _file_(__yaml["tokens"].template get<std::string>());
+                    auto __tokens_path = _file_(__yaml["tokens"].template get<string_view_t>());
                     if (!std::filesystem::exists(__tokens_path)) {
                         result = file_not_found;
                         _logger.error("recognizer: tokens file is not exists! {}", __tokens_path);
@@ -156,7 +156,7 @@ protected:
                     __config.model_config.num_threads =
                         __yaml["num_threads"].template get<uint32_t>(1);
                     __config.model_config.provider =
-                        __yaml["provider"].template get<std::string>("cpu");
+                        __yaml["provider"].template get<string_t>("cpu").c_str();
                     __config.model_config.debug = __yaml["debug"].template get<bool_t>(False);
                 } else {
                     result = unknown;
@@ -235,7 +235,7 @@ protected:
                                                 __seg.samples.size());
                         _model->Decode(&__stream);
                         auto __result = _model->GetResult(&__stream);
-                        _publisher->publish(std::make_shared<std::string>(__result.text));
+                        _publisher->publish(std::make_shared<string_t>(__result.text));
                         _logger.info("recognizer: sended {} to text!", __result.text);
                     }
                     _logger.debug("recognizer: speech recognize exit!");

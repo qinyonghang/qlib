@@ -118,5 +118,18 @@ else()
   message(WARNING "silero_vad.onnx not found in ${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/rules.json")
+  add_custom_command(
+    TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${CMAKE_CURRENT_SOURCE_DIR}/rules.json"
+      "${CMAKE_BINARY_DIR}/rules.json"
+    COMMENT "Copying rules.json to build directory"
+    VERBATIM
+  )
+else()
+  message(WARNING "rules.json not found in ${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
+
 install(TARGETS ${TARGET_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${TARGET_NAME})
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config.json DESTINATION ${CMAKE_INSTALL_PREFIX}/${TARGET_NAME})

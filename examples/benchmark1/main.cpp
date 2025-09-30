@@ -180,7 +180,7 @@ static auto benchmark_json_parse(benchmark::State& state) {
 static auto benchmark_json_pool_parse(benchmark::State& state) {
     for (auto _ : state) {
         pool_allocator_t pool;
-        json::value<char, memory_policy_t::copy, pool_allocator_t> json(pool);
+        json::value<char, json::copy, pool_allocator_t> json(pool);
         auto result = json::parse(&json, begin, end);
         benchmark::DoNotOptimize(result);
         benchmark::DoNotOptimize(json);
@@ -199,7 +199,7 @@ static auto benchmark_json_parse_view(benchmark::State& state) {
 static auto benchmark_json_view_pool_parse(benchmark::State& state) {
     for (auto _ : state) {
         pool_allocator_t pool;
-        json::value<char, memory_policy_t::view, pool_allocator_t> json(pool);
+        json::value<char, json::view, pool_allocator_t> json(pool);
         auto result = json::parse(&json, begin, end);
         benchmark::DoNotOptimize(result);
         benchmark::DoNotOptimize(json);

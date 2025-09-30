@@ -637,6 +637,18 @@ INLINE std::basic_ostream<Char>& operator<<(std::basic_ostream<Char>& out,
 }
 #endif
 
+#ifdef _GLIBCXX_FSTREAM
+template <class Char>
+NODISCARD INLINE CONSTEXPR static auto from_file(view<Char> const& __path) {
+    return value<Char>::from_file(value<Char>{__path});
+}
+
+template <class Char, class Allocator>
+NODISCARD INLINE CONSTEXPR static auto from_file(value<Char, Allocator> const& __path) {
+    return value<Char, Allocator>::from_file(__path);
+}
+#endif
+
 };  // namespace string
 
 using string_view_t = string::view<char>;

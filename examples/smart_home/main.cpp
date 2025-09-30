@@ -19,6 +19,7 @@
 
 #include "audio.hpp"
 #include "kws.hpp"
+#include "nlu.hpp"
 #include "recognizer.hpp"
 
 namespace qlib {
@@ -28,12 +29,7 @@ public:
     using base = object;
     using self = Application;
     using data_manager_type =
-        data::manager<std::string, vector_t<std::function<void(any_t const&)>>>;
-    // string_t _json_text;
-    // json_view_t _config;
-    // using Name = string_view_t;
-    // using NluParser = nlu::parser<Name, nlu::Pattern, nlu::Device, nlu::Action, nlu::Location>;
-    // unique_ptr_t<NluParser> _nlu_parser;
+        data::manager<string_view_t, vector_t<std::function<void(any_t const&)>>>;
 
 protected:
     string_t _yaml_text{};
@@ -43,6 +39,7 @@ protected:
     recognizer<data_manager_type> _recognizer{_logger};
     kws<data_manager_type> _kws{_logger};
     audio::reader<data_manager_type> _audio_reader{_logger};
+    nlu<data_manager_type> _nlu{_logger};
 
     static inline std::condition_variable _condition{};
     constexpr static inline string_view_t _name{"smart-home"};
@@ -89,27 +86,29 @@ public:
             }
 
             _logger.init(_config["logger"]);
-            {
-                string_t __text{_yaml_text.size()};
-                yaml_view_t::to(__text, _config);
-                _logger.trace("Application: config: {}", __text);
+            _logger.trace("Application: config: {}", string::from_yaml(_config, _yaml_text.size()));
+
+            result = _nlu.init(_config["nlu"], _data_manager);
+            if (0 != result) {
+                _logger.error("Application: nlu::init return {}!", result);
+                break;
             }
 
             result = _recognizer.init(_config["recognizer"], _data_manager);
             if (0 != result) {
-                _logger.error("recognizer::init return {}!", result);
+                _logger.error("Application: recognizer::init return {}!", result);
                 break;
             }
 
             result = _kws.init(_config["kws"], _data_manager);
             if (0 != result) {
-                _logger.error("kws::init return {}!", result);
+                _logger.error("Application: kws::init return {}!", result);
                 break;
             }
 
             result = _audio_reader.init(_config["audio"]["reader"], _data_manager);
             if (0 != result) {
-                _logger.error("audio::reader::init return {}!", result);
+                _logger.error("Application: audio::reader::init return {}!", result);
                 break;
             }
         } while (false);
@@ -121,25 +120,31 @@ public:
         int32_t result{0};
 
         do {
-            auto __kws_future = std::async(std::launch::async, [this]() { return _kws.exec(); });
-            auto __recognizer_future =
+            auto nlu_future = std::async(std::launch::async, [this]() { return _nlu.exec(); });
+            auto recognizer_future =
                 std::async(std::launch::async, [this]() { return _recognizer.exec(); });
+            auto kws_future = std::async(std::launch::async, [this]() { return _kws.exec(); });
             _audio_reader.start();
             {
-                std::mutex __mutex;
-                std::unique_lock<std::mutex> __lock(__mutex);
-                _condition.wait(__lock);
+                std::mutex mutex;
+                std::unique_lock<std::mutex> lock(mutex);
+                _condition.wait(lock);
             }
             _logger.info("Application: received exit signal!");
             _kws.exit();
             _recognizer.exit();
-            result = __kws_future.get();
+            _nlu.exit();
+            result = kws_future.get();
             if (0 != result) {
-                _logger.error("kws::exec return {}!", result);
+                _logger.error("Application: kws::exec return {}!", result);
             }
-            result = __recognizer_future.get();
+            result = recognizer_future.get();
             if (0 != result) {
-                _logger.error("recognizer::exec return {}!", result);
+                _logger.error("Application: recognizer::exec return {}!", result);
+            }
+            result = nlu_future.get();
+            if (0 != result) {
+                _logger.error("Application: nlu::exec return {}!", result);
             }
         } while (false);
 

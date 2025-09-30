@@ -37,9 +37,8 @@ protected:
     std::queue<any_t> _audio_datas;
     logger& _logger;
 
-    template <class _Str>
-    _Str _file_(_Str const& __file) const {
-        _Str __f{__file};
+    std::string _file_(string_view_t __file) const {
+        std::string __f{__file.begin(), __file.end()};
         if (!std::filesystem::exists(__f)) {
             char buf[1024u];
             auto len = readlink("/proc/self/exe", buf, sizeof(buf));
@@ -57,10 +56,10 @@ protected:
 
         do {
             _publisher_wakeup = qlib::make_unique<publisher_type>(
-                node["out_topic"].template get<std::string>(), data_manager);
+                node["out_topic"].template get<string_view_t>(), data_manager);
 
             _subscriber_audio = qlib::make_unique<subscriber_type>(
-                node["in_topic"].template get<std::string>(),
+                node["in_topic"].template get<string_view_t>(),
                 [this](any_t const& data) {
                     {
                         std::lock_guard<std::mutex> lock{_mutex};
@@ -73,7 +72,7 @@ protected:
                 data_manager);
 
             if (node["in_sample_rate"] &&
-                node["in_sample_rate"].template get<std::string>() != "auto") {
+                node["in_sample_rate"].template get<string_view_t>() != "auto") {
                 _in_sample_rate = node["in_sample_rate"].template get<uint32_t>();
             }
 
@@ -81,28 +80,28 @@ protected:
 
             auto& model = node["model"];
             auto& transducer = model["transducer"];
-            auto __encoder_path = _file_(transducer["encoder"].template get<std::string>());
+            auto __encoder_path = _file_(transducer["encoder"].template get<string_view_t>());
             if (!std::filesystem::exists(__encoder_path)) {
                 _logger.error("kws: file not found! {}", __encoder_path);
                 result = -1;
                 break;
             }
             ksc.model_config.transducer.encoder = __encoder_path;
-            auto __decoder_path = _file_(transducer["decoder"].template get<std::string>());
+            auto __decoder_path = _file_(transducer["decoder"].template get<string_view_t>());
             if (!std::filesystem::exists(__decoder_path)) {
                 _logger.error("kws: file not found! {}", __decoder_path);
                 result = -1;
                 break;
             }
             ksc.model_config.transducer.decoder = __decoder_path;
-            auto __joiner_path = _file_(transducer["joiner"].template get<std::string>());
+            auto __joiner_path = _file_(transducer["joiner"].template get<string_view_t>());
             if (!std::filesystem::exists(__joiner_path)) {
                 _logger.error("kws: file not found! {}", __joiner_path);
                 result = -1;
                 break;
             }
             ksc.model_config.transducer.joiner = __joiner_path;
-            auto __tokens_path = _file_(model["tokens"].template get<std::string>());
+            auto __tokens_path = _file_(model["tokens"].template get<string_view_t>());
             if (!std::filesystem::exists(__tokens_path)) {
                 _logger.error("kws: file not found! {}", __tokens_path);
                 result = -1;
@@ -110,9 +109,9 @@ protected:
             }
             ksc.model_config.tokens = __tokens_path;
             ksc.model_config.num_threads = model["num_threads"].template get<uint32_t>(1);
-            ksc.model_config.provider = model["provider"].template get<std::string>("cpu");
+            ksc.model_config.provider = model["provider"].template get<string_t>("cpu").c_str();
             ksc.model_config.debug = model["debug"].template get<bool_t>(False);
-            auto __keywords_path = _file_(node["keywords"]["path"].template get<std::string>());
+            auto __keywords_path = _file_(node["keywords"]["path"].template get<string_view_t>());
             if (!std::filesystem::exists(__keywords_path)) {
                 _logger.error("kws: file not found! {}", __keywords_path);
                 result = -1;
@@ -160,7 +159,7 @@ protected:
                     _keyword_spotter->Decode(&__stream);
                     auto r = _keyword_spotter->GetResult(&__stream);
                     if (!r.keyword.empty()) {
-                        _publisher_wakeup->publish(std::make_shared<std::string>(r.keyword));
+                        _publisher_wakeup->publish(std::make_shared<string_t>(r.keyword));
                         _logger.info("kws: sended {} to wakeup!", r.keyword);
                         _keyword_spotter->Reset(&__stream);
                     }

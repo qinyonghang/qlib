@@ -47,4 +47,6 @@ recognizer:
   tokens: "wenetspeech/tokens.txt"
 
 nlu:
-  
+  in_text_topic: "/recognizer/stream"
+  out_command_topic: "/nlu/command"
+  rules: "rules.json"

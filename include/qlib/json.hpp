@@ -7,9 +7,14 @@
 #include "qlib/vector.h"
 
 namespace qlib {
+
 namespace json {
 
-enum class memory_policy { copy, view };
+using memory_policy = size_t;
+enum : size_t {
+    copy = 0u,
+    view = 1u,
+};
 
 template <class T>
 constexpr static bool_t is_number_v = is_signed_v<T> || is_unsigned_v<T> || is_floating_point_v<T>;
@@ -213,7 +218,7 @@ public:
     using allocator_type = Allocator;
     using string_view_t = string::view<Char>;
     using string_t = string::value<Char, Allocator>;
-    using key_type = conditional_t<Policy == memory_policy::view, string_view_t, string_t>;
+    using key_type = conditional_t<Policy == view, string_view_t, string_t>;
     struct pair final {
         key_type key;
         self value;
@@ -229,7 +234,7 @@ public:
     };
     using object_type = vector_t<pair, Allocator>;
     using array_type = vector_t<self, Allocator>;
-    using string_type = conditional_t<Policy == memory_policy::view, string_view_t, string_t>;
+    using string_type = conditional_t<Policy == view, string_view_t, string_t>;
     using size_type = uint32_t;
     const static self default_value;
 
@@ -292,7 +297,7 @@ protected:
         INLINE FixedOutStream& operator<<(string_view_t s) {
             size_type new_size = _size + s.size();
             throw_if(new_size > _capacity);
-            copy(s.begin(), s.end(), _impl + _size);
+            qlib::copy(s.begin(), s.end(), _impl + _size);
             _size = new_size;
             return *this;
         }
@@ -864,16 +869,6 @@ template <class Char, memory_policy Policy, class Allocator>
 const typename value<Char, Policy, Allocator>::self value<Char, Policy, Allocator>::default_value =
     value<Char, Policy, Allocator>{};
 
-// #if __cplusplus < 201703L
-// template <class Char, memory_policy Policy, class Allocator>
-// constexpr typename value<Char, Policy, Allocator>::string_view_t
-//     value<Char, Policy, Allocator>::true_str = "true";
-
-// template <class Char, memory_policy Policy, class Allocator>
-// constexpr typename value<Char, Policy, Allocator>::string_view_t
-//     value<Char, Policy, Allocator>::false_str = "false";
-// #endif
-
 template <class Char, memory_policy Policy, class Allocator>
 constexpr
     typename value<Char, Policy, Allocator>::string_view_t value<Char, Policy, Allocator>::true_str;
@@ -1251,10 +1246,19 @@ INLINE OutStream& operator<<(OutStream& out, value<Char, Policy, Allocator> cons
 
 };  // namespace json
 
-using memory_policy_t = json::memory_policy;
-using json_t = json::value<char, json::memory_policy::copy>;
-using json_view_t = json::value<char, json::memory_policy::view>;
-using json_pool_t = json::value<char, json::memory_policy::copy, pool_allocator_t>;
-using json_view_pool_t = json::value<char, json::memory_policy::view, pool_allocator_t>;
+namespace string {
+template <class Char, json::memory_policy Policy, class Allocator>
+INLINE CONSTEXPR value<Char, Allocator> from_json(json::value<Char, Policy, Allocator> const& node,
+                                                  size_t size = 1024u) {
+    value<Char, Allocator> result(size);
+    node.to(result);
+    return result;
+}
+};  // namespace string
+
+using json_t = json::value<char, json::copy>;
+using json_view_t = json::value<char, json::view>;
+using json_pool_t = json::value<char, json::copy, pool_allocator_t>;
+using json_view_pool_t = json::value<char, json::view, pool_allocator_t>;
 
 };  // namespace qlib

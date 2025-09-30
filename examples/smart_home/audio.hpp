@@ -58,12 +58,12 @@ protected:
 
         do {
             if (node["out_sample_rate"] &&
-                node["out_sample_rate"].template get<std::string>() != "auto") {
+                node["out_sample_rate"].template get<string_view_t>() != "auto") {
                 _out_sample_rate = node["out_sample_rate"].template get<uint32_t>();
             }
 
             _publisher = qlib::make_unique<publisher_type>(
-                node["out_topic"].template get<std::string>(), manager);
+                node["out_topic"].template get<string_view_t>(), manager);
 
             snd_lib_error_set_handler(_alsa_logger_);
 
@@ -92,12 +92,12 @@ protected:
                 .hostApiSpecificStreamInfo = nullptr};
 
             _sample_rate = uint32_t(device_info->defaultSampleRate);
-            if (node["sample_rate"] && node["sample_rate"].template get<std::string>() != "auto") {
+            if (node["sample_rate"] && node["sample_rate"].template get<string_view_t>() != "auto") {
                 _sample_rate = node["sample_rate"].template get<uint32_t>();
             }
             uint32_t frames_per_read = _sample_rate * 0.5;
             if (node["frames_per_read"] &&
-                node["frames_per_read"].template get<std::string>() != "auto") {
+                node["frames_per_read"].template get<string_view_t>() != "auto") {
                 frames_per_read = node["frames_per_read"].template get<uint32_t>();
             }
 
