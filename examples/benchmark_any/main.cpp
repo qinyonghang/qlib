@@ -138,7 +138,7 @@ static auto benchmark_stl_any_small(benchmark::State& state) {
 }
 
 static auto benchmark_any_small(benchmark::State& state) {
-    using Any = qlib::any_t<>;
+    using Any = qlib::any_t;
     using Object = qlib::SmallObject;
     qlib::throw_if(sizeof(Any) != 16u);
     for (auto _ : state) {
@@ -160,61 +160,11 @@ static auto benchmark_stl_any_big(benchmark::State& state) {
 }
 
 static auto benchmark_any_big(benchmark::State& state) {
-    using Any = qlib::any_t<>;
+    using Any = qlib::any_t;
     using Object = qlib::BigObject;
     qlib::throw_if(sizeof(Any) != 16u);
     for (auto _ : state) {
         Any value{Object{1u}};
-        qlib::benchmark<Any, Object>(value);
-        benchmark::DoNotOptimize(value);
-    }
-}
-
-static auto benchmark_any_pool_small(benchmark::State& state) {
-    using Any = qlib::any_t<qlib::pool_allocator_t>;
-    using Object = qlib::SmallObject;
-    qlib::throw_if(sizeof(Any) != 24u);
-    qlib::pool_allocator_t allocator(512 * 1024u);
-    for (auto _ : state) {
-        Any value{Object{1u}, allocator};
-        qlib::benchmark<Any, Object>(value);
-        benchmark::DoNotOptimize(value);
-    }
-    // std::cout << allocator.counter << std::endl;
-}
-
-static auto benchmark_any_pool_big(benchmark::State& state) {
-    using Any = qlib::any_t<qlib::pool_allocator_t>;
-    using Object = qlib::BigObject;
-    qlib::throw_if(sizeof(Any) != 24u);
-    qlib::pool_allocator_t allocator(512 * 1024u);
-    for (auto _ : state) {
-        Any value{Object{1u}, allocator};
-        qlib::benchmark<Any, Object>(value);
-        benchmark::DoNotOptimize(value);
-    }
-    // std::cout << allocator.counter << std::endl;
-}
-
-static auto benchmark_any_stack_small(benchmark::State& state) {
-    using Any = qlib::any_t<qlib::stack_allocator_t<512 * 1024u>>;
-    using Object = qlib::SmallObject;
-    qlib::throw_if(sizeof(Any) != 24u);
-    qlib::stack_allocator_t<512 * 1024u> allocator;
-    for (auto _ : state) {
-        Any value{Object{1u}, allocator};
-        qlib::benchmark<Any, Object>(value);
-        benchmark::DoNotOptimize(value);
-    }
-}
-
-static auto benchmark_any_stack_big(benchmark::State& state) {
-    using Any = qlib::any_t<qlib::stack_allocator_t<512 * 1024u>>;
-    using Object = qlib::BigObject;
-    qlib::throw_if(sizeof(Any) != 24u);
-    qlib::stack_allocator_t<512 * 1024u> allocator;
-    for (auto _ : state) {
-        Any value{Object{1u}, allocator};
         qlib::benchmark<Any, Object>(value);
         benchmark::DoNotOptimize(value);
     }
@@ -241,10 +191,6 @@ int32_t main(int32_t argc, char* argv[]) {
         BENCHMARK(benchmark_any_small)->Iterations(iterations);
         BENCHMARK(benchmark_stl_any_big)->Iterations(iterations);
         BENCHMARK(benchmark_any_big)->Iterations(iterations);
-        BENCHMARK(benchmark_any_pool_small)->Iterations(iterations);
-        BENCHMARK(benchmark_any_pool_big)->Iterations(iterations);
-        BENCHMARK(benchmark_any_stack_small)->Iterations(iterations);
-        BENCHMARK(benchmark_any_stack_big)->Iterations(iterations);
 
         benchmark::RunSpecifiedBenchmarks();
         benchmark::Shutdown();

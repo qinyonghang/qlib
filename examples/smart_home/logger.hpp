@@ -73,7 +73,7 @@ public:
             _impl = std::make_shared<spdlog::logger>(__name, __sinks.begin(), __sinks.end());
             _impl->set_level(level_type(__map["level"].template get<uint32_t>()));
 
-            _impl->trace("logger init!");
+            _impl->trace("logger: init!");
         } while (false);
 
         return result;

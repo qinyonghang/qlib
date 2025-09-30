@@ -5,6 +5,7 @@
 // #include <poll.h>
 #include <signal.h>
 
+#include <any>
 #include <atomic>
 #include <condition_variable>
 #include <fstream>
@@ -13,13 +14,12 @@
 #include <mutex>
 #include <thread>
 
-#include "qlib/any.h"
 #include "qlib/argparse.h"
 #include "qlib/json.h"
 
 #include "audio.hpp"
 #include "kws.hpp"
-#include "logger.hpp"
+#include "recognizer.hpp"
 
 namespace qlib {
 
@@ -27,7 +27,8 @@ class Application final : public object {
 public:
     using base = object;
     using self = Application;
-    using data_manager_type = data::manager<std::string, std::function<void(any_t<> const&)>>;
+    using data_manager_type =
+        data::manager<std::string, vector_t<std::function<void(any_t const&)>>>;
     // string_t _json_text;
     // json_view_t _config;
     // using Name = string_view_t;
@@ -39,12 +40,11 @@ protected:
     yaml_view_t _config{};
     data_manager_type _data_manager{};
     logger _logger{};
-    std::shared_ptr<audio::reader<data_manager_type>> _audio_reader{};
-    std::shared_ptr<kws<data_manager_type>> _kws{};
+    recognizer<data_manager_type> _recognizer{_logger};
+    kws<data_manager_type> _kws{_logger};
+    audio::reader<data_manager_type> _audio_reader{_logger};
 
-    static inline std::atomic<bool_t> _exit{False};
     static inline std::condition_variable _condition{};
-
     constexpr static inline string_view_t _name{"smart-home"};
 
 public:
@@ -76,11 +76,7 @@ public:
                 break;
             }
 
-            signal(
-                SIGINT, +[](int signal) {
-                    _exit = True;
-                    _condition.notify_one();
-                });
+            signal(SIGINT, +[](int signal) { _condition.notify_one(); });
 
             auto config_path = parser.get<string_t>("config");
             std::cout << _name << ": " << config_path << std::endl;
@@ -93,19 +89,27 @@ public:
             }
 
             _logger.init(_config["logger"]);
+            {
+                string_t __text{_yaml_text.size()};
+                yaml_view_t::to(__text, _config);
+                _logger.trace("Application: config: {}", __text);
+            }
 
-            _audio_reader = std::make_shared<audio::reader<data_manager_type>>(
-                _config["audio"]["reader"], _data_manager, _logger);
-            if (_audio_reader == nullptr) {
-                result = -1;
-                _logger.error("audio::reader::init return {}!", result);
+            result = _recognizer.init(_config["recognizer"], _data_manager);
+            if (0 != result) {
+                _logger.error("recognizer::init return {}!", result);
                 break;
             }
 
-            _kws = std::make_shared<kws<data_manager_type>>(_config["kws"], _data_manager, _logger);
-            if (_kws == nullptr) {
-                result = -1;
+            result = _kws.init(_config["kws"], _data_manager);
+            if (0 != result) {
                 _logger.error("kws::init return {}!", result);
+                break;
+            }
+
+            result = _audio_reader.init(_config["audio"]["reader"], _data_manager);
+            if (0 != result) {
+                _logger.error("audio::reader::init return {}!", result);
                 break;
             }
         } while (false);
@@ -117,16 +121,25 @@ public:
         int32_t result{0};
 
         do {
-            auto __kws_future = std::async(std::launch::async, [this]() { return _kws->exec(); });
-            _audio_reader->start();
-            std::mutex __mutex;
-            std::unique_lock<std::mutex> __lock(__mutex);
-            _condition.wait(__lock);
-            __lock.unlock();
-            _kws->exit();
+            auto __kws_future = std::async(std::launch::async, [this]() { return _kws.exec(); });
+            auto __recognizer_future =
+                std::async(std::launch::async, [this]() { return _recognizer.exec(); });
+            _audio_reader.start();
+            {
+                std::mutex __mutex;
+                std::unique_lock<std::mutex> __lock(__mutex);
+                _condition.wait(__lock);
+            }
+            _logger.info("Application: received exit signal!");
+            _kws.exit();
+            _recognizer.exit();
             result = __kws_future.get();
             if (0 != result) {
                 _logger.error("kws::exec return {}!", result);
+            }
+            result = __recognizer_future.get();
+            if (0 != result) {
+                _logger.error("recognizer::exec return {}!", result);
             }
         } while (false);
 

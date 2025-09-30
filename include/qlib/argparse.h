@@ -143,7 +143,7 @@ public:
     using allocator_type = Allocator;
     using string_view = string::view<char_type>;
     using string_type = string::value<char_type, allocator_type>;
-    using any_type = any::value<allocator_type>;
+    using any_type = any::value;
 
 protected:
     string_type _name;
@@ -206,7 +206,7 @@ public:
     using allocator_type = Allocator;
     using string_view = string::view<char_type>;
     using string_type = string::value<char_type, allocator_type>;
-    using any_type = any::value<allocator_type>;
+    using any_type = any::value;
     using argument_type = argument<Char, allocator_type>;
     using arguments_type = vector::value<typename argument_type::ptr, allocator_type>;
 

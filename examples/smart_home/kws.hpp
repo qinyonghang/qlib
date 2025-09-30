@@ -34,7 +34,7 @@ protected:
     unique_ptr_t<KeywordSpotter> _keyword_spotter{};
     std::mutex _mutex;
     std::condition_variable _condition;
-    std::queue<any_t<>> _audio_datas;
+    std::queue<any_t> _audio_datas;
     logger& _logger;
 
     template <class _Str>
@@ -45,7 +45,7 @@ protected:
             auto len = readlink("/proc/self/exe", buf, sizeof(buf));
             if (len != -1) {
                 buf[len] = '\0';
-                __f = (std::filesystem::path(buf).parent_path() / "kws" / __f).string();
+                __f = (std::filesystem::path(buf).parent_path() / __f).string();
             }
         }
         return __f;
@@ -61,13 +61,14 @@ protected:
 
             _subscriber_audio = qlib::make_unique<subscriber_type>(
                 node["in_topic"].template get<std::string>(),
-                [this](any_t<> const& data) {
-                    _logger.debug("kws received audio data from audio::reader!");
+                [this](any_t const& data) {
                     {
                         std::lock_guard<std::mutex> lock{_mutex};
                         _audio_datas.emplace(data);
                     }
                     _condition.notify_one();
+                    auto __samples = any_cast<std::shared_ptr<vector_t<float32_t>>>(data);
+                    _logger.debug("kws: received {} samples!", __samples->size());
                 },
                 data_manager);
 
@@ -81,33 +82,48 @@ protected:
             auto& model = node["model"];
             auto& transducer = model["transducer"];
             auto __encoder_path = _file_(transducer["encoder"].template get<std::string>());
-            _logger.debug("kws encoder: {}", __encoder_path);
-            throw_if(!std::filesystem::exists(__encoder_path), "file not found");
+            if (!std::filesystem::exists(__encoder_path)) {
+                _logger.error("kws: file not found! {}", __encoder_path);
+                result = -1;
+                break;
+            }
             ksc.model_config.transducer.encoder = __encoder_path;
             auto __decoder_path = _file_(transducer["decoder"].template get<std::string>());
-            _logger.debug("kws decoder: {}", __encoder_path);
-            throw_if(!std::filesystem::exists(__decoder_path), "file not found");
+            if (!std::filesystem::exists(__decoder_path)) {
+                _logger.error("kws: file not found! {}", __decoder_path);
+                result = -1;
+                break;
+            }
             ksc.model_config.transducer.decoder = __decoder_path;
             auto __joiner_path = _file_(transducer["joiner"].template get<std::string>());
-            _logger.debug("kws joiner: {}", __joiner_path);
-            throw_if(!std::filesystem::exists(__joiner_path), "file not found");
+            if (!std::filesystem::exists(__joiner_path)) {
+                _logger.error("kws: file not found! {}", __joiner_path);
+                result = -1;
+                break;
+            }
             ksc.model_config.transducer.joiner = __joiner_path;
             auto __tokens_path = _file_(model["tokens"].template get<std::string>());
-            _logger.debug("kws tokens: {}", __tokens_path);
-            throw_if(!std::filesystem::exists(__tokens_path), "file not found");
+            if (!std::filesystem::exists(__tokens_path)) {
+                _logger.error("kws: file not found! {}", __tokens_path);
+                result = -1;
+                break;
+            }
             ksc.model_config.tokens = __tokens_path;
             ksc.model_config.num_threads = model["num_threads"].template get<uint32_t>(1);
             ksc.model_config.provider = model["provider"].template get<std::string>("cpu");
             ksc.model_config.debug = model["debug"].template get<bool_t>(False);
             auto __keywords_path = _file_(node["keywords"]["path"].template get<std::string>());
-            _logger.debug("kws keywords: {}", __keywords_path);
-            throw_if(!std::filesystem::exists(__keywords_path), "file not found");
+            if (!std::filesystem::exists(__keywords_path)) {
+                _logger.error("kws: file not found! {}", __keywords_path);
+                result = -1;
+                break;
+            }
             ksc.keywords_file = __keywords_path;
 
             _keyword_spotter = make_unique<KeywordSpotter>(move(KeywordSpotter::Create(ksc)));
 
             _init = True;
-            _logger.trace("kws init!");
+            _logger.trace("kws: init!");
         } while (false);
 
         return result;
@@ -118,44 +134,38 @@ protected:
 
         do {
             if (!_init) {
-                _logger.error("kws not initialized!");
+                _logger.error("kws: not initialized!");
                 break;
             }
 
             auto __stream = _keyword_spotter->CreateStream();
+            std::shared_ptr<vector_t<float32_t>> __samples{nullptr};
             while (!_exit) {
-                std::unique_lock<std::mutex> __lock(_mutex);
-                _condition.wait(__lock);
-                if (_exit) {
-                    break;
-                }
-                if (_audio_datas.empty()) {
-                    continue;
-                }
-                auto __audio_datas = std::move(_audio_datas);
-                _audio_datas = {};
-                __lock.unlock();
-
-                _logger.debug("kws handle enter:");
-                while (!__audio_datas.empty()) {
-                    auto __audio_data_any = std::move(__audio_datas.front());
-                    __audio_datas.pop();
-                    auto __audio_data =
-                        any_cast<std::shared_ptr<vector_t<float32_t>>>(__audio_data_any);
-                    __stream.AcceptWaveform(_in_sample_rate, __audio_data->data(),
-                                            __audio_data->size());
+                {
+                    std::unique_lock<std::mutex> __lock(_mutex);
+                    while (_audio_datas.empty() && !_exit) {
+                        _condition.wait(__lock);
+                    }
+                    if (_exit) {
+                        break;
+                    }
+                    __samples =
+                        any_cast<std::shared_ptr<vector_t<float32_t>>>(_audio_datas.front());
+                    _audio_datas.pop();
                 }
 
+                _logger.debug("kws: handle enter:");
+                __stream.AcceptWaveform(_in_sample_rate, __samples->data(), __samples->size());
                 while (_keyword_spotter->IsReady(&__stream)) {
                     _keyword_spotter->Decode(&__stream);
                     auto r = _keyword_spotter->GetResult(&__stream);
                     if (!r.keyword.empty()) {
-                        _publisher_wakeup->publish(r.keyword);
-                        _logger.info("kws sended {} to wakeup!", r.keyword);
+                        _publisher_wakeup->publish(std::make_shared<std::string>(r.keyword));
+                        _logger.info("kws: sended {} to wakeup!", r.keyword);
                         _keyword_spotter->Reset(&__stream);
                     }
                 }
-                _logger.debug("kws handle exit!");
+                _logger.debug("kws: handle exit!");
             }
         } while (false);
 
@@ -169,6 +179,8 @@ public:
     self& operator=(self const&) = delete;
     self& operator=(self&&) = delete;
 
+    kws(logger& __logger) : _logger(__logger) {}
+
     template <class _Yaml>
     kws(_Yaml const& __node, _DataManager& __manager, logger& __logger) : _logger(__logger) {
         auto __result = _init_(__node, __manager);
@@ -177,7 +189,7 @@ public:
 
     ~kws() noexcept {
         exit();
-        _logger.trace("kws deinit!");
+        _logger.trace("kws: deinit!");
     }
 
     template <class... _Args>

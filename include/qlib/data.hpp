@@ -94,8 +94,11 @@ protected:
 
     template <class _uValue = value_type, class... _Args>
     FORCE_INLINE CONSTEXPR enable_if_t<is_container_v<_uValue>, void> _emplace_(_Args&&... __args) {
-        for (auto& __callback : _impl) {
-            __callback(forward<_Args>(__args)...);
+        for (size_t i = 0; i < _impl.size(); ++i) {
+            auto& __callback = _impl[i];
+            if (__callback) {
+                __callback(__args...);
+            }
         }
     }
 

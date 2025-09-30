@@ -90,7 +90,32 @@ add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     ${CMAKE_CURRENT_SOURCE_DIR}/kws
     ${CMAKE_BINARY_DIR}/kws
     COMMENT "Copying kws directory to ${CMAKE_BINARY_DIR}"
+    VERBATIM
 )
+endif()
+
+
+if (NOT EXISTS ${CMAKE_BINARY_DIR}/wenetspeech)
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/wenetspeech
+    ${CMAKE_BINARY_DIR}/wenetspeech
+    COMMENT "Copying wenetspeech directory to ${CMAKE_BINARY_DIR}"
+    VERBATIM
+)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/silero_vad.onnx")
+  add_custom_command(
+    TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "${CMAKE_CURRENT_SOURCE_DIR}/silero_vad.onnx"
+      "${CMAKE_BINARY_DIR}/silero_vad.onnx"
+    COMMENT "Copying silero_vad.onnx to build directory"
+    VERBATIM
+  )
+else()
+  message(WARNING "silero_vad.onnx not found in ${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
 install(TARGETS ${TARGET_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/${TARGET_NAME})

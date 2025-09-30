@@ -13,6 +13,7 @@ audio:
   reader:
     out_topic: "/audio/reader/stream"
     out_sample_rate: 16000
+    # frames_per_read: 8000
 
 kws:
   in_sample_rate: 16000
@@ -20,23 +21,30 @@ kws:
   out_topic: "/kws/wakeup"
   model:
     transducer:
-      encoder: "encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx"
-      decoder: "decoder-epoch-12-avg-2-chunk-16-left-64.onnx"
-      joiner: "joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx"
-    tokens: "tokens.txt"
+      encoder: "kws/encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx"
+      decoder: "kws/decoder-epoch-12-avg-2-chunk-16-left-64.onnx"
+      joiner: "kws/joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx"
+    tokens: "kws/tokens.txt"
     debug: false
   keywords:
-    path: "keywords.txt"
+    path: "kws/keywords.txt"
 
 recognizer:
-  in_topic: "/kws/wakeup"
+  in_audio_topic: "/audio/reader/stream"
+  in_wakeup_topic: "/kws/wakeup"
   in_sample_rate: 16000
-  in_max_size: 10
+  in_max_size: 4
+  in_window_size: 512
+  in_sleep_time: 5000
   out_topic: "/recognizer/stream"
-  model:
-    encoder: "encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx"
-    decoder: "decoder-epoch-12-avg-2-chunk-16-left-64.onnx"
-    tokens: "tokens.txt"
+  vad:
+    # wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx
+    model: "silero_vad.onnx"
+    threshold: 0.3
+    min_speech_duration: 0.2
+  # wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-wenetspeech-yue-u2pp-conformer-ctc-zh-en-cantonese-int8-2025-09-10.tar.bz2
+  model: "wenetspeech/model.int8.onnx"
+  tokens: "wenetspeech/tokens.txt"
 
 nlu:
   

@@ -91,8 +91,7 @@ public:
 
 template <class Any, class Object>
 static void test() {
-    typename Any::allocator_type allocator;
-    Any value(allocator);
+    Any value;
     bool_t throw_bad_any_cast{False};
     try {
         auto object = any_cast<Object>(value);
@@ -134,26 +133,14 @@ static void test() {
 };  // namespace qlib
 
 TEST(qlib, Any) {
-    using Any = qlib::any_t<>;
+    using Any = qlib::any_t;
     EXPECT_EQ(sizeof(Any), 16u);
-    qlib::test<Any, qlib::Object>();
-};
-
-TEST(qlib, AnyPool) {
-    using Any = qlib::any_t<qlib::pool_allocator_t>;
-    EXPECT_EQ(sizeof(Any), 24u);
     qlib::test<Any, qlib::Object>();
 };
 
 TEST(qlib, AnyBig) {
-    using Any = qlib::any_t<>;
+    using Any = qlib::any_t;
     EXPECT_EQ(sizeof(Any), 16u);
-    qlib::test<Any, qlib::BigObject>();
-}
-
-TEST(qlib, AnyBigPool) {
-    using Any = qlib::any_t<qlib::pool_allocator_t>;
-    EXPECT_EQ(sizeof(Any), 24u);
     qlib::test<Any, qlib::BigObject>();
 }
 

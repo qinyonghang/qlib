@@ -57,11 +57,6 @@ protected:
         int32_t result{0u};
 
         do {
-            // _channels = 1u;
-            // if (node["channels"] && node["channels"].template get<std::string>() != "auto") {
-            //     _channels = node["channels"].template get<uint32_t>();
-            // }
-
             if (node["out_sample_rate"] &&
                 node["out_sample_rate"].template get<std::string>() != "auto") {
                 _out_sample_rate = node["out_sample_rate"].template get<uint32_t>();
@@ -111,17 +106,20 @@ protected:
                 +[](void const* input, void* output, unsigned long __count,
                     PaStreamCallbackTimeInfo const* timeInfo, PaStreamCallbackFlags statusFlags,
                     void* userData) {
-                    // _logger.debug("audio::reader received {} samples!", __count);
                     self* reader = (self*)(userData);
-                    uint32_t __new_count =
-                        __count * reader->_out_sample_rate / reader->_sample_rate;
-                    vector_t<float32_t> __output;
-                    __output.resize(__new_count);
-                    _resample_(__output.data(), (int16_t const*)input, __count,
-                               reader->_sample_rate, reader->_out_sample_rate);
-                    reader->_publisher->publish(
-                        std::make_shared<vector_t<float32_t>>(std::move(__output)));
-                    // _logger.debug("audio::reader sended {} samples!", __new_count);
+                    reader->_logger.debug("audio::reader: received {} samples!", __count);
+                    if (reader->_publisher != nullptr) {
+                        uint32_t __new_count =
+                            __count * reader->_out_sample_rate / reader->_sample_rate;
+                        vector_t<float32_t> __output;
+                        __output.resize(__new_count);
+                        _resample_(__output.data(), (int16_t const*)input, __count,
+                                   reader->_sample_rate, reader->_out_sample_rate);
+                        reader->_publisher->publish(
+                            std::make_shared<vector_t<float32_t>>(std::move(__output)));
+                        reader->_logger.debug("audio::reader: sended {} samples!", __new_count);
+                    }
+
                     return int32_t(paContinue);
                 },
                 this);
@@ -133,7 +131,7 @@ protected:
             }
 
             _init = True;
-            _logger.trace("audio::reader init!");
+            _logger.trace("audio::reader: init!");
         } while (false);
 
         return result;
@@ -171,7 +169,7 @@ public:
             }
         }
 
-        _logger.trace("audio::reader deinit!");
+        _logger.trace("audio::reader: deinit!");
     }
 
     template <class... _Args>

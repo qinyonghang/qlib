@@ -10,35 +10,19 @@ public:
     char const* what() const noexcept override { return "bad any cast"; }
 };
 
-template <class Allocator = new_allocator_t>
 class value : public object {
 public:
     using base = object;
     using self = value;
-    using allocator_type = Allocator;
 
 protected:
-    class manager : public traits<Allocator>::reference {
+    class manager : public object {
     public:
-        using base = typename traits<Allocator>::reference;
+        using base = object;
         using self = manager;
         friend class value;
 
-    protected:
-        FORCE_INLINE CONSTEXPR allocator_type& _allocator_() noexcept {
-            return static_cast<base&>(*this);
-        }
-
-        FORCE_INLINE CONSTEXPR allocator_type& _allocator_() const noexcept {
-            return static_cast<base&>(const_cast<self&>(*this));
-        }
-
     public:
-        manager() = default;
-        manager(manager const&) = default;
-        manager(manager&&) = default;
-        FORCE_INLINE CONSTEXPR manager(allocator_type& __a) : base(__a) {}
-
         virtual void construct(manager*) const {}
         virtual void move_construct(manager*) {}
         virtual void destroy() {}
@@ -65,28 +49,15 @@ protected:
 
     public:
         template <class _Up>
-        derived(_Up&& __value) : _impl(base::_allocator_().template allocate<value_type>(1u)) {
-            new (_impl) value_type(forward<_Up>(__value));
-        }
+        derived(_Up&& __value) : _impl(new value_type(forward<_Up>(__value))) {}
 
-        template <class _Up>
-        derived(_Up&& __value, allocator_type& __a)
-                : base(__a), _impl(base::_allocator_().template allocate<value_type>(1u)) {
-            new (_impl) value_type(forward<_Up>(__value));
-        }
-
-        void construct(manager* __ptr) const override {
-            new (__ptr) derived<value_type>(*_impl, base::_allocator_());
-        }
+        void construct(manager* __ptr) const override { new (__ptr) derived<value_type>(*_impl); }
 
         void move_construct(manager* __ptr) override {
-            new (__ptr) derived<value_type>(move(*_impl), base::_allocator_());
+            new (__ptr) derived<value_type>(move(*_impl));
         }
 
-        void destroy() override {
-            _impl->~value_type();
-            base::_allocator_().template deallocate(_impl, 1u);
-        }
+        void destroy() override { delete _impl; }
 
         bool_t has_value() const override { return True; }
 
@@ -113,21 +84,12 @@ protected:
             new (&_impl) _Tp(forward<_Up>(__value));
         }
 
-        template <class _Up>
-        derived(_Up&& __value, allocator_type& __a) : base(__a) {
-            new (&_impl) _Tp(forward<_Up>(__value));
-        }
-
         _Tp* _get_() noexcept { return (_Tp*)(&_impl); }
         _Tp const* _get_() const noexcept { return (_Tp*)(&_impl); }
 
-        void construct(manager* __ptr) const override {
-            new (__ptr) derived<_Tp>(*_get_(), base::_allocator_());
-        }
+        void construct(manager* __ptr) const override { new (__ptr) derived<_Tp>(*_get_()); }
 
-        void move_construct(manager* __ptr) override {
-            new (__ptr) derived<_Tp>(move(*_get_()), base::_allocator_());
-        }
+        void move_construct(manager* __ptr) override { new (__ptr) derived<_Tp>(move(*_get_())); }
 
         void destroy() override { _get_()->~_Tp(); }
 
@@ -141,7 +103,7 @@ protected:
 #endif
     };
 
-    typename aligned_storage<sizeof(derived<void*>), alignof(derived<void*>)>::type _storage;
+    typename aligned_storage<sizeof(derived<void*>), alignof(derived<void*>)>::type _storage{};
 
     NODISCARD FORCE_INLINE manager* _manager_() noexcept { return (manager*)(&_storage); }
     NODISCARD FORCE_INLINE manager const* _manager_() const noexcept {
@@ -150,18 +112,12 @@ protected:
 
 public:
     FORCE_INLINE CONSTEXPR value() { new (&_storage) manager(); }
-    FORCE_INLINE CONSTEXPR value(allocator_type& __a) { new (&_storage) manager(__a); }
     FORCE_INLINE CONSTEXPR value(self const& __a) { __a._manager_()->construct(_manager_()); }
     FORCE_INLINE CONSTEXPR value(self&& __a) { __a._manager_()->move_construct(_manager_()); }
 
     template <class _Tp, class Enable = enable_if_t<!is_same_v<remove_cvref_t<_Tp>, self>>>
     FORCE_INLINE CONSTEXPR value(_Tp&& value) {
         new (&_storage) derived<remove_cvref_t<_Tp>>(forward<_Tp>(value));
-    }
-
-    template <class _Tp, class Enable = enable_if_t<!is_same_v<remove_cvref_t<_Tp>, self>>>
-    FORCE_INLINE CONSTEXPR value(_Tp&& value, allocator_type& __a) {
-        new (&_storage) derived<remove_cvref_t<_Tp>>(forward<_Tp>(value), __a);
     }
 
     FORCE_INLINE ~value() { _manager_()->destroy(); }
@@ -182,9 +138,8 @@ public:
 
     template <class _Tp>
     FORCE_INLINE self& operator=(_Tp&& value) {
-        auto& allocator = _manager_()->_allocator_();
         _manager_()->destroy();
-        new (&_storage) derived<remove_cvref_t<_Tp>>(forward<_Tp>(value), allocator);
+        new (&_storage) derived<remove_cvref_t<_Tp>>(forward<_Tp>(value));
         return *this;
     }
 
@@ -196,10 +151,6 @@ public:
     NODISCARD FORCE_INLINE auto& type() const noexcept { return _manager_()->type(); }
 #endif
 
-    // void swap(self& __a) noexcept {
-
-    // }
-
     FORCE_INLINE void reset() {
         _manager_()->destroy();
         new (&_storage) manager();
@@ -208,37 +159,36 @@ public:
     template <class _Tp>
     NODISCARD FORCE_INLINE auto get() -> _Tp {
         using _Up = remove_cvref_t<_Tp>;
+        throw_if(!has_value() || _manager_()->type() != typeid(_Up), bad_any_cast{});
         auto ptr = _manager_()->get();
-        throw_if(ptr == nullptr, bad_any_cast{});
         return *((_Up*)(ptr));
     }
 
     template <class _Tp>
     NODISCARD FORCE_INLINE auto get() const -> _Tp {
         using _Up = remove_cvref_t<_Tp>;
+        throw_if(!has_value() || _manager_()->type() != typeid(_Up), bad_any_cast{});
         auto ptr = _manager_()->get();
-        throw_if(ptr == nullptr, bad_any_cast{});
         return *((_Up const*)(ptr));
     }
 };
 
 };  // namespace any
 
-template <class Allocator = new_allocator_t>
-using any_t = any::value<Allocator>;
+using any_t = any::value;
 
-template <class _Tp, class Allocator = new_allocator_t>
-NODISCARD INLINE _Tp any_cast(any_t<Allocator> const& __a) {
+template <class _Tp>
+NODISCARD INLINE _Tp any_cast(any_t const& __a) {
     return __a.template get<remove_cvref_t<_Tp> const&>();
 }
 
-template <class _Tp, class Allocator = new_allocator_t>
-NODISCARD INLINE _Tp any_cast(any_t<Allocator>& __a) {
+template <class _Tp>
+NODISCARD INLINE _Tp any_cast(any_t& __a) {
     return __a.template get<remove_cvref_t<_Tp>&>();
 }
 
-template <class _Tp, class Allocator = new_allocator_t>
-NODISCARD INLINE _Tp any_cast(any_t<Allocator>&& __a) {
+template <class _Tp>
+NODISCARD INLINE _Tp any_cast(any_t&& __a) {
     return move(__a.template get<remove_cvref_t<_Tp>&>());
 }
 };  // namespace qlib
