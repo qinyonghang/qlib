@@ -65,11 +65,9 @@ public:
 
             parser.add_argument("config").help("config file path");
 
-            try {
-                parser.parse_args(argv + 1, argv + argc);
-            } catch (...) {
+            result = parser.parse_args(argc, argv);
+            if (0 != result) {
                 std::cout << parser.help() << std::endl;
-                result = -1;
                 break;
             }
 
