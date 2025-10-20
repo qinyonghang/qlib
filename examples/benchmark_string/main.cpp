@@ -128,7 +128,7 @@ static auto benchmark_string_view1(benchmark::State& state) {
 }
 
 static auto benchmark_string_pool1(benchmark::State& state) {
-    const auto capacity = memory::align_up((string::strlen(text1) + 1), sizeof(void*)) *
+    const auto capacity = memory::align_up((len(text1) + 1), sizeof(void*)) *
         std::distance(state.begin(), state.end());
     using string_t = string::value<char, pool_allocator_t>;
     pool_allocator_t pool(capacity);
@@ -140,7 +140,7 @@ static auto benchmark_string_pool1(benchmark::State& state) {
 
 static auto benchmark_string_stack1(benchmark::State& state) {
     constexpr auto capacity = 3 * 1024 * 1024;
-    const auto need_capacity = memory::align_up((string::strlen(text1) + 1), sizeof(void*)) *
+    const auto need_capacity = memory::align_up((len(text1) + 1), sizeof(void*)) *
         std::distance(state.begin(), state.end());
     if (need_capacity == 0 || need_capacity > capacity) {
         std::cerr << "capacity must be between 0 and 512KB" << std::endl;
@@ -171,7 +171,7 @@ static auto benchmark_string_view2(benchmark::State& state) {
 }
 
 static auto benchmark_string_pool2(benchmark::State& state) {
-    const auto capacity = memory::align_up((string::strlen(text2) + 1), sizeof(void*)) *
+    const auto capacity = memory::align_up((len(text2) + 1), sizeof(void*)) *
         std::distance(state.begin(), state.end());
     using string_t = string::value<char, pool_allocator_t>;
     pool_allocator_t pool(capacity);
@@ -183,7 +183,7 @@ static auto benchmark_string_pool2(benchmark::State& state) {
 
 static auto benchmark_string_stack2(benchmark::State& state) {
     constexpr auto capacity = 3 * 1024 * 1024;
-    const auto need_capacity = memory::align_up((string::strlen(text2) + 1), sizeof(void*)) *
+    const auto need_capacity = memory::align_up((len(text2) + 1), sizeof(void*)) *
         std::distance(state.begin(), state.end());
     if (need_capacity == 0 || need_capacity > capacity) {
         std::cerr << "capacity must be between 0 and 512KB" << std::endl;
@@ -200,8 +200,8 @@ static auto benchmark_string_stack2(benchmark::State& state) {
 }
 
 static auto benchmark_stl_equal(benchmark::State& state) {
-    constexpr auto text1_len = string::strlen(text1);
-    constexpr auto text2_len = string::strlen(text2);
+    constexpr auto text1_len = len(text1);
+    constexpr auto text2_len = len(text2);
     string_t dest1(text1_len);
     string_t dest2(text2_len);
     std::copy(text1, text1 + text1_len, dest1.begin());
@@ -221,8 +221,8 @@ static auto benchmark_stl_equal(benchmark::State& state) {
 }
 
 static auto benchmark_equal(benchmark::State& state) {
-    constexpr auto text1_len = string::strlen(text1);
-    constexpr auto text2_len = string::strlen(text2);
+    constexpr auto text1_len = len(text1);
+    constexpr auto text2_len = len(text2);
     string_t dest1(text1_len);
     string_t dest2(text2_len);
     std::copy(text1, text1 + text1_len, dest1.begin());
@@ -242,8 +242,8 @@ static auto benchmark_equal(benchmark::State& state) {
 }
 
 static auto benchmark_stl_copy(benchmark::State& state) {
-    constexpr auto text1_len = string::strlen(text1);
-    constexpr auto text2_len = string::strlen(text2);
+    constexpr auto text1_len = len(text1);
+    constexpr auto text2_len = len(text2);
     string_t dest1(text1_len);
     string_t dest2(text2_len);
     std::copy(text1, text1 + text1_len, dest1.begin());
@@ -262,8 +262,8 @@ static auto benchmark_stl_copy(benchmark::State& state) {
 }
 
 static auto benchmark_copy(benchmark::State& state) {
-    constexpr auto text1_len = string::strlen(text1);
-    constexpr auto text2_len = string::strlen(text2);
+    constexpr auto text1_len = len(text1);
+    constexpr auto text2_len = len(text2);
     string_t dest1(text1_len);
     string_t dest2(text2_len);
     copy(text1, text1 + text1_len, dest1.begin());
@@ -418,7 +418,7 @@ int32_t main(int32_t argc, char* argv[]) {
 
         if (argc > 1) {
             auto [ptr, ec] =
-                std::from_chars(argv[1], argv[1] + string::strlen(argv[1]), iterations);
+                std::from_chars(argv[1], argv[1] + len(argv[1]), iterations);
             if (ec != std::errc{}) {
                 result = -1;
                 break;

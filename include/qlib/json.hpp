@@ -48,33 +48,8 @@ enum class value_enum : uint8_t {
     number_ref = 1 << 6,
 };
 
-class not_object final : public exception {
-public:
-    char const* what() const noexcept override { return "not object"; }
-};
-
-class not_array final : public exception {
-public:
-    char const* what() const noexcept override { return "not array"; }
-};
-
-class not_string final : public exception {
-public:
-    char const* what() const noexcept override { return "not string"; }
-};
-
-class not_number final : public exception {
-public:
-    char const* what() const noexcept override { return "not number"; }
-};
-
-class not_boolean final : public exception {
-public:
-    char const* what() const noexcept override { return "not boolean"; }
-};
-
 template <class T, class Iter1, class Iter2>
-INLINE CONSTEXPR auto exp(T& value, Iter1& first, Iter2 last) {
+ALWAYS_INLINE CONSTEXPR auto exp(T& value, Iter1& first, Iter2 last) {
     if (*first == 'e' || *first == 'E') {
         ++first;
 
@@ -103,7 +78,7 @@ template <class T>
 class converter<T, enable_if_t<is_unsigned_v<T>>> : public object {
 public:
     template <class Iter1, class Iter2>
-    INLINE CONSTEXPR static auto decode(T& __value, Iter1 __first, Iter2 __last) {
+    ALWAYS_INLINE CONSTEXPR static auto decode(T& __value, Iter1 __first, Iter2 __last) {
         T _value{0u};
         while (__first != __last && is_digit(*__first)) {
             _value = _value * 10u + (*__first - '0');
@@ -112,7 +87,7 @@ public:
 
         exp(_value, __first, __last);
 
-        throw_if(__first != __last, not_number());
+        throw_if(__first != __last, "not number");
 
         __value = _value;
     }
@@ -122,7 +97,7 @@ template <class T>
 class converter<T, enable_if_t<is_signed_v<T>>> : public object {
 public:
     template <class Iter1, class Iter2>
-    INLINE CONSTEXPR static auto decode(T& value, Iter1 first, Iter2 last) {
+    ALWAYS_INLINE CONSTEXPR static auto decode(T& value, Iter1 first, Iter2 last) {
         int8_t sign{1u};
         if (*first == '-') {
             sign = -1;
@@ -140,7 +115,7 @@ template <class T>
 class converter<T, enable_if_t<is_floating_point_v<T>>> : public object {
 public:
     template <class Iter1, class Iter2>
-    INLINE CONSTEXPR static auto decode(T& value, Iter1 first, Iter2 last) {
+    ALWAYS_INLINE CONSTEXPR static auto decode(T& value, Iter1 first, Iter2 last) {
         T _value{0u};
 
         T sign = 1;
@@ -166,7 +141,7 @@ public:
 
         exp(_value, first, last);
 
-        throw_if(first != last, not_number());
+        throw_if(first != last, "not number");
 
         value = sign * _value;
     }
@@ -254,47 +229,49 @@ protected:
         size_type _size{0u};
         size_type _capacity{0u};
 
-        NODISCARD INLINE allocator_type& _allocator() noexcept { return static_cast<base&>(*this); }
-        NODISCARD INLINE allocator_type& _allocator() const noexcept {
+        NODISCARD ALWAYS_INLINE allocator_type& _allocator() noexcept {
+            return static_cast<base&>(*this);
+        }
+        NODISCARD ALWAYS_INLINE allocator_type& _allocator() const noexcept {
             return static_cast<base&>(const_cast<self&>(*this));
         }
 
     public:
         using base = typename traits<Allocator>::reference;
 
-        INLINE constexpr explicit FixedOutStream(size_type capacity) noexcept(
+        ALWAYS_INLINE constexpr explicit FixedOutStream(size_type capacity) noexcept(
             is_nothrow_constructible_v<base>)
                 : _impl(_allocator().template allocate<Char>(capacity + 1u)), _size(0u),
                   _capacity(capacity) {}
 
-        INLINE constexpr FixedOutStream(size_type capacity, Allocator& allocator) noexcept(
+        ALWAYS_INLINE constexpr FixedOutStream(size_type capacity, Allocator& allocator) noexcept(
             is_nothrow_constructible_v<base, Allocator&>)
                 : base(allocator), _impl(_allocator().template allocate<Char>(capacity + 1u)),
                   _size(0u), _capacity(capacity) {}
 
         FixedOutStream(FixedOutStream const&) = delete;
         FixedOutStream& operator=(FixedOutStream const&) = delete;
-        INLINE FixedOutStream(FixedOutStream&& o)
+        ALWAYS_INLINE FixedOutStream(FixedOutStream&& o)
                 : base(move(o)), _impl(o._impl), _size(o._size), _capacity(o._capacity) {
             o._impl = nullptr;
             o._size = 0u;
             o._capacity = 0u;
         }
 
-        INLINE FixedOutStream& operator=(FixedOutStream&& o) noexcept {
+        ALWAYS_INLINE FixedOutStream& operator=(FixedOutStream&& o) noexcept {
             this->~FixedOutStream();
             new (this) FixedOutStream(move(o));
             return *this;
         }
 
-        INLINE ~FixedOutStream() {
+        ALWAYS_INLINE ~FixedOutStream() {
             _allocator().template deallocate<Char>(_impl, _capacity);
             _impl = nullptr;
             _size = 0u;
             _capacity = 0u;
         }
 
-        INLINE FixedOutStream& operator<<(string_view_t s) {
+        ALWAYS_INLINE FixedOutStream& operator<<(string_view_t s) {
             size_type new_size = _size + s.size();
             throw_if(new_size > _capacity);
             qlib::copy(s.begin(), s.end(), _impl + _size);
@@ -302,18 +279,20 @@ protected:
             return *this;
         }
 
-        NODISCARD INLINE bool_t operator==(string_view_t s) const {
+        NODISCARD ALWAYS_INLINE bool_t operator==(string_view_t s) const {
             return _size == s.size() && equal(s.begin(), s.end(), _impl);
         }
     };
 
-    NODISCARD INLINE allocator_type& _allocator() noexcept { return static_cast<base&>(*this); }
-    NODISCARD INLINE allocator_type& _allocator() const noexcept {
+    NODISCARD ALWAYS_INLINE allocator_type& _allocator() noexcept {
+        return static_cast<base&>(*this);
+    }
+    NODISCARD ALWAYS_INLINE allocator_type& _allocator() const noexcept {
         return static_cast<base&>(const_cast<self&>(*this));
     }
 
     template <class Iter1, class Iter2>
-    INLINE static constexpr int32_t _parse_unicode(uint32_t& code, Iter1& begin, Iter2 end) {
+    ALWAYS_INLINE static constexpr int32_t _parse_unicode(uint32_t& code, Iter1& begin, Iter2 end) {
         int32_t result{0u};
         do {
             code = 0;
@@ -361,7 +340,7 @@ protected:
     }
 
     template <class Iter1, class Iter2>
-    INLINE static constexpr int32_t _parse_string(string_t* value, Iter1 begin, Iter2 end) {
+    ALWAYS_INLINE static constexpr int32_t _parse_string(string_t* value, Iter1 begin, Iter2 end) {
         int32_t result{0u};
 
         auto start = begin;
@@ -439,25 +418,25 @@ protected:
     }
 
     template <class T = string_type>
-    INLINE constexpr enable_if_t<is_same_v<T, string_view_t>, void> _init_string_type(
+    ALWAYS_INLINE constexpr enable_if_t<is_same_v<T, string_view_t>, void> _init_string_type(
         string_view_t value, allocator_type&) {
         new (&_impl) string_type(value);
     }
 
     template <class T = string_type>
-    INLINE constexpr enable_if_t<!is_same_v<T, string_view_t>, void> _init_string_type(
+    ALWAYS_INLINE constexpr enable_if_t<!is_same_v<T, string_view_t>, void> _init_string_type(
         string_view_t value, allocator_type& allocator) {
         new (&_impl) string_type(value, allocator);
     }
 
     template <class T = string_type>
-    INLINE constexpr enable_if_t<is_same_v<T, string_view_t>, void> _object_emplace(
+    ALWAYS_INLINE constexpr enable_if_t<is_same_v<T, string_view_t>, void> _object_emplace(
         object_type& object, string_view_t key) {
         object.emplace_back(key, self(_allocator()));
     }
 
     template <class T = string_type>
-    INLINE constexpr enable_if_t<!is_same_v<T, string_view_t>, void> _object_emplace(
+    ALWAYS_INLINE constexpr enable_if_t<!is_same_v<T, string_view_t>, void> _object_emplace(
         object_type& object, string_view_t key) {
         object.emplace_back(string_t(key, _allocator()), self(_allocator()));
     }
@@ -475,31 +454,35 @@ public:
     public:
         value_ref() = delete;
         value_ref(self const&) = delete;
-        INLINE value_ref(self&&) = default;
+        ALWAYS_INLINE value_ref(self&&) = default;
         self& operator=(self const&) = delete;
-        INLINE self& operator=(self&&) = default;
+        ALWAYS_INLINE self& operator=(self&&) = default;
 
         template <class... Args>
-        INLINE value_ref(Args&&... args) : _impl(forward<Args>(args)...) {}
+        ALWAYS_INLINE value_ref(Args&&... args) : _impl(forward<Args>(args)...) {}
 
-        INLINE value_type operator*() const noexcept { return move(_impl); }
+        ALWAYS_INLINE value_type operator*() const noexcept { return move(_impl); }
     };
 
     // template <class Enable = enable_if_t<is_constructible_v<base>>>
-    INLINE constexpr value() noexcept(is_nothrow_constructible_v<base>){};
+    ALWAYS_INLINE constexpr value() noexcept(is_nothrow_constructible_v<base>){};
 
-    INLINE constexpr value(allocator_type& allocator) noexcept(
+    ALWAYS_INLINE constexpr value(allocator_type& allocator) noexcept(
         is_nothrow_constructible_v<base, allocator_type&>)
             : base(allocator) {}
 
 #define REGISTER_CONSTRUCTOR(enum_value, type)                                                     \
-    INLINE constexpr value(type const& value) : _type(enum_value) { new (&_impl) type(value); }    \
-    INLINE constexpr value(type const& value, allocator_type& allocator)                           \
+    ALWAYS_INLINE constexpr value(type const& value) : _type(enum_value) {                         \
+        new (&_impl) type(value);                                                                  \
+    }                                                                                              \
+    ALWAYS_INLINE constexpr value(type const& value, allocator_type& allocator)                    \
             : base(allocator), _type(enum_value) {                                                 \
         new (&_impl) type(value);                                                                  \
     }                                                                                              \
-    INLINE constexpr value(type&& value) : _type(enum_value) { new (&_impl) type(move(value)); }   \
-    INLINE constexpr value(type&& value, allocator_type& allocator)                                \
+    ALWAYS_INLINE constexpr value(type&& value) : _type(enum_value) {                              \
+        new (&_impl) type(move(value));                                                            \
+    }                                                                                              \
+    ALWAYS_INLINE constexpr value(type&& value, allocator_type& allocator)                         \
             : base(allocator), _type(enum_value) {                                                 \
         new (&_impl) type(move(value));                                                            \
     }
@@ -514,29 +497,29 @@ public:
         new (&_impl) string_type(value);
     }
 
-    INLINE constexpr value(string_view_t value, allocator_type& allocator)
+    ALWAYS_INLINE constexpr value(string_view_t value, allocator_type& allocator)
             : base(allocator), _type(value_enum::string) {
         _init_string_type(value, allocator);
     }
 
-    INLINE constexpr value(string_view_t value) : _type(value_enum::string) {
+    ALWAYS_INLINE constexpr value(string_view_t value) : _type(value_enum::string) {
         new (&_impl) string_type(value);
     }
 
-    INLINE constexpr value(string_t const& value) : _type(value_enum::string) {
+    ALWAYS_INLINE constexpr value(string_t const& value) : _type(value_enum::string) {
         new (&_impl) string_type(value);
     }
 
-    INLINE constexpr value(string_t const& value, allocator_type& allocator)
+    ALWAYS_INLINE constexpr value(string_t const& value, allocator_type& allocator)
             : base(allocator), _type(value_enum::string) {
         new (&_impl) string_type(value);
     }
 
-    INLINE constexpr value(string_t&& value) : _type(value_enum::string) {
+    ALWAYS_INLINE constexpr value(string_t&& value) : _type(value_enum::string) {
         new (&_impl) string_type(move(value));
     }
 
-    INLINE constexpr value(string_t&& value, allocator_type& allocator)
+    ALWAYS_INLINE constexpr value(string_t&& value, allocator_type& allocator)
             : base(allocator), _type(value_enum::string) {
         new (&_impl) string_type(move(value));
     }
@@ -586,7 +569,7 @@ public:
         }
     }
 
-    INLINE CONSTEXPR value(self&& o) : base(move(o)), _type{o._type}, _impl{move(o._impl)} {
+    ALWAYS_INLINE CONSTEXPR value(self&& o) : base(move(o)), _type{o._type}, _impl{move(o._impl)} {
         o._type = value_enum::null;
     }
 
@@ -631,13 +614,13 @@ public:
     }
 
     template <class T>
-    INLINE self& operator=(T&& o) {
+    ALWAYS_INLINE self& operator=(T&& o) {
         this->~value();
         new (this) self(forward<T>(o), _allocator());
         return *this;
     }
 
-    INLINE self& operator=(self const& o) {
+    ALWAYS_INLINE self& operator=(self const& o) {
         if (unlikely(this != &o)) {
             this->~value();
             new (this) self(o);
@@ -645,18 +628,20 @@ public:
         return *this;
     }
 
-    INLINE self& operator=(self&& o) {
+    ALWAYS_INLINE self& operator=(self&& o) {
         this->~value();
         new (this) self(move(o));
         return *this;
     }
 
-    NODISCARD INLINE constexpr bool_t empty() const noexcept { return _type == value_enum::null; }
+    NODISCARD ALWAYS_INLINE constexpr bool_t empty() const noexcept {
+        return _type == value_enum::null;
+    }
 
-    NODISCARD INLINE constexpr auto type() const noexcept { return _type; }
+    NODISCARD ALWAYS_INLINE constexpr auto type() const noexcept { return _type; }
 
     template <class T>
-    NODISCARD INLINE constexpr enable_if_t<is_number_v<T>, T> get() const {
+    NODISCARD ALWAYS_INLINE constexpr enable_if_t<is_number_v<T>, T> get() const {
         if (likely(_type == value_enum::number_ref)) {
             auto& value = *(string_type*)(&_impl);
             T value_number{};
@@ -670,58 +655,48 @@ public:
             return value_number;
             // return (*(string_t*)(&_impl)).template to<T>();
         } else {
-            __throw(not_number{});
+            __throw("not number");
         }
     }
 
     template <class T>
-    NODISCARD INLINE constexpr enable_if_t<is_same_v<T, bool_t>, T> get() const {
-        if (likely(_type == value_enum::boolean)) {
-            auto& value = *(string_view_t*)(&_impl);
-            if (value == true_str) {
-                return True;
-            } else if (value == false_str) {
-                return False;
-            } else {
-                __throw(not_boolean{});
-            }
+    NODISCARD ALWAYS_INLINE constexpr enable_if_t<is_same_v<T, bool_t>, T> get() const {
+        throw_if(_type != value_enum::boolean, "not boolean");
+        auto& value = *(string_view_t*)(&_impl);
+        if (value == true_str) {
+            return True;
+        } else if (value == false_str) {
+            return False;
         } else {
-            __throw(not_boolean{});
+            __throw("not boolean");
         }
     }
 
     template <class T>
-    NODISCARD INLINE constexpr enable_if_t<is_same_v<T, string_view_t>, T> get() const {
-        if (_type == value_enum::string) {
-            return *(string_type*)(&_impl);
-        } else {
-            __throw(not_string{});
-        }
+    NODISCARD ALWAYS_INLINE constexpr enable_if_t<is_same_v<T, string_view_t>, T> get() const {
+        throw_if(_type != value_enum::string, "not str");
+        return *(string_type*)(&_impl);
     }
 
     template <class T>
-    NODISCARD INLINE constexpr enable_if_t<is_same_v<T, string_t>, T> get() const {
-        if (_type == value_enum::string) {
-            auto& s = *(string_type*)(&_impl);
-            string_t result(s.size(), _allocator());
-            if (unlikely(_parse_string(&result, s.begin(), s.end()))) {
-                __throw(not_string{});
-            }
-            return result;
-        } else {
-            __throw(not_string{});
-        }
+    NODISCARD ALWAYS_INLINE constexpr enable_if_t<is_same_v<T, string_t>, T> get() const {
+        throw_if(_type != value_enum::string, "not str");
+        auto& s = *(string_type*)(&_impl);
+        string_t result(s.size(), _allocator());
+        auto res = _parse_string(&result, s.begin(), s.end());
+        throw_if(res != 0, "not str");
+        return result;
     }
 
     template <class T>
-    NODISCARD INLINE constexpr T get(T&& default_value) const {
+    NODISCARD ALWAYS_INLINE constexpr T get(T&& default_value) const {
         if (empty()) {
             return forward<T>(default_value);
         }
         return get<T>();
     }
 
-    NODISCARD INLINE constexpr self const& operator[](string_view_t key) const {
+    NODISCARD ALWAYS_INLINE constexpr self const& operator[](string_view_t key) const {
         for (auto const& pair : object()) {
             if (pair.key == key) {
                 return pair.value;
@@ -730,7 +705,7 @@ public:
         return default_value;
     }
 
-    NODISCARD INLINE constexpr self& operator[](string_view_t key) {
+    NODISCARD ALWAYS_INLINE constexpr self& operator[](string_view_t key) {
         auto& object = this->object();
         for (auto& pair : object) {
             if (pair.key == key) {
@@ -741,25 +716,25 @@ public:
         return object.back().value;
     }
 
-    NODISCARD FORCE_INLINE object_type& object() {
-        throw_if(_type != value_enum::object, not_object{});
+    NODISCARD ALWAYS_INLINE object_type& object() {
+        throw_if(_type != value_enum::object, "not object");
         return *(object_type*)(&_impl);
     }
-    NODISCARD FORCE_INLINE object_type const& object() const {
+    NODISCARD ALWAYS_INLINE object_type const& object() const {
         return const_cast<self&>(*this).object();
     }
 
-    NODISCARD FORCE_INLINE array_type& array() {
-        throw_if(_type != value_enum::array, not_array{});
+    NODISCARD ALWAYS_INLINE array_type& array() {
+        throw_if(_type != value_enum::array, "not array");
         return *(array_type*)(&_impl);
     }
 
-    NODISCARD FORCE_INLINE array_type const& array() const {
+    NODISCARD ALWAYS_INLINE array_type const& array() const {
         return const_cast<self&>(*this).array();
     }
 
 #ifdef _INITIALIZER_LIST
-    NODISCARD INLINE static self object(std::initializer_list<value_ref<pair>> list) {
+    NODISCARD ALWAYS_INLINE static self object(std::initializer_list<value_ref<pair>> list) {
         self value;
         value._type = value_enum::object;
         new (&value._impl) object_type(list.size());
@@ -770,7 +745,7 @@ public:
         return value;
     }
 
-    NODISCARD INLINE static self array(std::initializer_list<value_ref<self>> list) {
+    NODISCARD ALWAYS_INLINE static self array(std::initializer_list<value_ref<self>> list) {
         self value;
         value._type = value_enum::array;
         new (&value._impl) array_type(list.size());
@@ -841,14 +816,14 @@ public:
         return out;
     }
 
-    NODISCARD INLINE constexpr auto to() const {
+    NODISCARD ALWAYS_INLINE constexpr auto to() const {
         string_t out(1024u);
         return to(out);
     }
 
-    NODISCARD INLINE explicit operator bool_t() const noexcept { return !empty(); }
+    NODISCARD ALWAYS_INLINE explicit operator bool_t() const noexcept { return !empty(); }
 
-    NODISCARD INLINE bool_t operator==(string_view_t text) const {
+    NODISCARD ALWAYS_INLINE bool_t operator==(string_view_t text) const {
         FixedOutStream out(text.size());
         bool_t ok{False};
         try {
@@ -860,7 +835,7 @@ public:
     }
 
     template <class T>
-    NODISCARD INLINE bool_t operator!=(T const& o) const {
+    NODISCARD ALWAYS_INLINE bool_t operator!=(T const& o) const {
         return !(*this == o);
     }
 };
@@ -906,7 +881,7 @@ protected:
     using impl_type = impl;
 
     template <class T = key_type>
-    INLINE static enable_if_t<is_same_v<T, string_view_t>, json_type> create_number_ref(
+    ALWAYS_INLINE static enable_if_t<is_same_v<T, string_view_t>, json_type> create_number_ref(
         string_view_t value, allocator_type& allocator) {
         json_type json_value(allocator);
         json_value._type = value_enum::number_ref;
@@ -915,7 +890,7 @@ protected:
     }
 
     template <class T = key_type>
-    INLINE static enable_if_t<!is_same_v<T, string_view_t>, json_type> create_number_ref(
+    ALWAYS_INLINE static enable_if_t<!is_same_v<T, string_view_t>, json_type> create_number_ref(
         string_view_t value, allocator_type& allocator) {
         json_type json_value(allocator);
         json_value._type = value_enum::number_ref;
@@ -924,16 +899,16 @@ protected:
     }
 
     template <class T = key_type>
-    FORCE_INLINE enable_if_t<is_same_v<T, string_view_t>> __object_emplace(impl& layer,
-                                                                           string_view_t key,
-                                                                           json_type&& value) {
+    ALWAYS_INLINE enable_if_t<is_same_v<T, string_view_t>> __object_emplace(impl& layer,
+                                                                            string_view_t key,
+                                                                            json_type&& value) {
         layer.object()->emplace_back(key, move(value));
     }
 
     template <class T = key_type>
-    FORCE_INLINE enable_if_t<!is_same_v<T, string_view_t>> __object_emplace(impl& layer,
-                                                                            string_view_t key,
-                                                                            json_type&& value) {
+    ALWAYS_INLINE enable_if_t<!is_same_v<T, string_view_t>> __object_emplace(impl& layer,
+                                                                             string_view_t key,
+                                                                             json_type&& value) {
         layer.object()->emplace_back(string_type(key, value._allocator()), move(value));
     }
 
@@ -954,7 +929,7 @@ protected:
             f,
             number,
         };
-        CONSTEXPR INLINE char_helper() noexcept : _impl{} {
+        CONSTEXPR ALWAYS_INLINE char_helper() noexcept : _impl{} {
             string_view_t __skip{" \t\n\r:,"};
             for (auto it = __skip.begin(); it != __skip.end(); ++it) {
                 _impl[uint8_t(*it)] = 1u;
@@ -978,7 +953,7 @@ protected:
             }
         }
 
-        NODISCARD FORCE_INLINE CONSTEXPR type operator[](uint8_t c) const noexcept {
+        NODISCARD ALWAYS_INLINE CONSTEXPR type operator[](uint8_t c) const noexcept {
             return type(_impl[c]);
         }
     };
@@ -990,7 +965,7 @@ protected:
 #endif
 
     template <class Iter1, class Iter2>
-    FORCE_INLINE Iter1 _parse_string(string_view_t* value, Iter1 begin, Iter2 end) {
+    ALWAYS_INLINE Iter1 _parse_string(string_view_t* value, Iter1 begin, Iter2 end) {
         Iter1 start = ++begin;
         while (begin < end && *begin != '"') {
             if (*begin == '\\' && ++begin < end) {
@@ -1009,7 +984,7 @@ protected:
     }
 
     template <class Iter1, class Iter2>
-    FORCE_INLINE CONSTEXPR int32_t
+    ALWAYS_INLINE CONSTEXPR int32_t
     _call(json_type* json, Iter1 begin, Iter2 end, vector_t<impl_type>& layers) {
         int32_t result{0};
 
@@ -1221,7 +1196,7 @@ public:
     constexpr parser(size_type capacity) noexcept : _capacity(capacity) {}
 
     template <class Iter1, class Iter2>
-    FORCE_INLINE CONSTEXPR int32_t operator()(json_type* json, Iter1 begin, Iter2 end) {
+    ALWAYS_INLINE CONSTEXPR int32_t operator()(json_type* json, Iter1 begin, Iter2 end) {
         vector_t<impl_type> layers(_capacity, json->_allocator());
         return _call(json, begin, end, layers);
     }
@@ -1233,13 +1208,13 @@ typename parser<Json>::char_helper parser<Json>::_char_helper{};
 #endif
 
 template <class Iter1, class Iter2, class Json>
-FORCE_INLINE CONSTEXPR int32_t parse(Json* json, Iter1 begin, Iter2 end) noexcept {
+ALWAYS_INLINE CONSTEXPR int32_t parse(Json* json, Iter1 begin, Iter2 end) noexcept {
     parser<Json> parser;
     return parser(json, begin, end);
 }
 
 template <class OutStream, class Char, memory_policy Policy, class Allocator>
-INLINE OutStream& operator<<(OutStream& out, value<Char, Policy, Allocator> const& value) {
+ALWAYS_INLINE OutStream& operator<<(OutStream& out, value<Char, Policy, Allocator> const& value) {
     value.to(out);
     return out;
 }
@@ -1248,8 +1223,8 @@ INLINE OutStream& operator<<(OutStream& out, value<Char, Policy, Allocator> cons
 
 namespace string {
 template <class Char, json::memory_policy Policy, class Allocator>
-INLINE CONSTEXPR value<Char, Allocator> from_json(json::value<Char, Policy, Allocator> const& node,
-                                                  size_t size = 1024u) {
+ALWAYS_INLINE CONSTEXPR value<Char, Allocator> from_json(
+    json::value<Char, Policy, Allocator> const& node, size_t size = 1024u) {
     value<Char, Allocator> result(size);
     node.to(result);
     return result;

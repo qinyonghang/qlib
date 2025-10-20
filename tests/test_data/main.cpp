@@ -11,39 +11,39 @@ protected:
     static inline size_t _counter{0u};
 
 public:
-    INLINE Object() noexcept { ++_counter; }
+    ALWAYS_INLINE Object() noexcept { ++_counter; }
 
-    INLINE Object(Object const& __o) noexcept : _impl(__o._impl) { ++_counter; }
+    ALWAYS_INLINE Object(Object const& __o) noexcept : _impl(__o._impl) { ++_counter; }
 
-    INLINE Object(Object&& __o) noexcept : _impl(std::move(__o._impl)) { ++_counter; }
+    ALWAYS_INLINE Object(Object&& __o) noexcept : _impl(std::move(__o._impl)) { ++_counter; }
 
-    INLINE Object(size_t __impl) noexcept : _impl(__impl) { ++_counter; }
+    ALWAYS_INLINE Object(size_t __impl) noexcept : _impl(__impl) { ++_counter; }
 
-    INLINE ~Object() noexcept { --_counter; }
+    ALWAYS_INLINE ~Object() noexcept { --_counter; }
 
-    INLINE Object& operator=(Object const& __o) noexcept {
+    ALWAYS_INLINE Object& operator=(Object const& __o) noexcept {
         if (this != &__o) {
             _impl = __o._impl;
         }
         return *this;
     }
 
-    INLINE Object& operator=(Object&& __o) noexcept {
+    ALWAYS_INLINE Object& operator=(Object&& __o) noexcept {
         _impl = std::move(__o._impl);
         __o._impl = 0u;
         return *this;
     }
 
-    NODISCARD FORCE_INLINE bool_t operator==(Object const& __o) const { return _impl == __o._impl; }
+    NODISCARD ALWAYS_INLINE bool_t operator==(Object const& __o) const { return _impl == __o._impl; }
 
-    NODISCARD FORCE_INLINE bool_t operator==(size_t __o) const { return _impl == __o; }
+    NODISCARD ALWAYS_INLINE bool_t operator==(size_t __o) const { return _impl == __o; }
 
     template <class _Up>
-    NODISCARD FORCE_INLINE bool_t operator!=(_Up const& __o) const {
+    NODISCARD ALWAYS_INLINE bool_t operator!=(_Up const& __o) const {
         return !(*this == __o);
     }
 
-    NODISCARD FORCE_INLINE static size_t counter() noexcept { return _counter; }
+    NODISCARD ALWAYS_INLINE static size_t counter() noexcept { return _counter; }
 };
 
 class BigObject : public object {
@@ -53,41 +53,41 @@ protected:
     static inline size_t _counter{0u};
 
 public:
-    INLINE BigObject() noexcept { ++_counter; }
+    ALWAYS_INLINE BigObject() noexcept { ++_counter; }
 
-    INLINE BigObject(BigObject const& __o) noexcept : _impl(__o._impl) { ++_counter; }
+    ALWAYS_INLINE BigObject(BigObject const& __o) noexcept : _impl(__o._impl) { ++_counter; }
 
-    INLINE BigObject(BigObject&& __o) noexcept : _impl(std::move(__o._impl)) { ++_counter; }
+    ALWAYS_INLINE BigObject(BigObject&& __o) noexcept : _impl(std::move(__o._impl)) { ++_counter; }
 
-    INLINE BigObject(size_t __impl) noexcept : _impl(__impl) { ++_counter; }
+    ALWAYS_INLINE BigObject(size_t __impl) noexcept : _impl(__impl) { ++_counter; }
 
-    INLINE ~BigObject() noexcept { --_counter; }
+    ALWAYS_INLINE ~BigObject() noexcept { --_counter; }
 
-    INLINE BigObject& operator=(BigObject const& __o) noexcept {
+    ALWAYS_INLINE BigObject& operator=(BigObject const& __o) noexcept {
         if (this != &__o) {
             _impl = __o._impl;
         }
         return *this;
     }
 
-    INLINE BigObject& operator=(BigObject&& __o) noexcept {
+    ALWAYS_INLINE BigObject& operator=(BigObject&& __o) noexcept {
         _impl = std::move(__o._impl);
         __o._impl = 0u;
         return *this;
     }
 
-    NODISCARD FORCE_INLINE bool_t operator==(BigObject const& __o) const {
+    NODISCARD ALWAYS_INLINE bool_t operator==(BigObject const& __o) const {
         return _impl == __o._impl;
     }
 
-    NODISCARD FORCE_INLINE bool_t operator==(size_t __o) const { return _impl == __o; }
+    NODISCARD ALWAYS_INLINE bool_t operator==(size_t __o) const { return _impl == __o; }
 
     template <class _Up>
-    NODISCARD FORCE_INLINE bool_t operator!=(_Up const& __o) const {
+    NODISCARD ALWAYS_INLINE bool_t operator!=(_Up const& __o) const {
         return !(*this == __o);
     }
 
-    NODISCARD FORCE_INLINE static size_t counter() noexcept { return _counter; }
+    NODISCARD ALWAYS_INLINE static size_t counter() noexcept { return _counter; }
 };
 
 };  // namespace qlib

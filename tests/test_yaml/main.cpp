@@ -41,7 +41,7 @@ nlu:
 )";
 
 constexpr auto kBegin = kText;
-constexpr auto kEnd = kBegin + string::strlen(kBegin);
+constexpr auto kEnd = kBegin + len(kBegin);
 
 TEST(qlib, YamlView) {
     yaml_view_t root{};

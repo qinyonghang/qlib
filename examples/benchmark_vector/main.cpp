@@ -70,7 +70,7 @@ int32_t main(int32_t argc, char* argv[]) {
 
         if (argc > 1) {
             auto [ptr, ec] =
-                std::from_chars(argv[1], argv[1] + string::strlen(argv[1]), iterations);
+                std::from_chars(argv[1], argv[1] + len(argv[1]), iterations);
             if (ec != std::errc{}) {
                 result = -1;
                 break;

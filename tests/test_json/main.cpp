@@ -225,7 +225,7 @@ static void json_parse(JsonType& value) {
     ]
 })";
 
-    constexpr auto text_len = string::strlen(text);
+    constexpr auto text_len = len(text);
     constexpr auto begin = text;
     constexpr auto end = begin + text_len;
 

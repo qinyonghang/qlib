@@ -16,7 +16,7 @@ enum : size_t { ok, null = 0u, object, array, copy, view, not_array, not_object 
 template <class _Tp, class Enable = void>
 struct converter : public object {
     template <class Iter1, class Iter2>
-    NODISCARD FORCE_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
         return _Tp{__first, __last};
     }
 };
@@ -25,7 +25,7 @@ template <class _Tp>
 class converter<_Tp, enable_if_t<is_unsigned_v<_Tp>>> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD FORCE_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
         _Tp __val{0u};
         while (__first != __last && is_digit(*__first)) {
             __val = __val * 10u + (*__first - '0');
@@ -42,7 +42,7 @@ template <class _Tp>
 class converter<_Tp, enable_if_t<is_signed_v<_Tp>>> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD FORCE_INLINE CONSTEXPR static auto decode(Iter1 first, Iter2 last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 first, Iter2 last) {
         _Tp sign{1u};
         if (*first == '-') {
             sign = -1;
@@ -59,7 +59,7 @@ template <class _Tp>
 class converter<_Tp, enable_if_t<is_floating_point_v<_Tp>>> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD FORCE_INLINE CONSTEXPR static auto decode(Iter1 first, Iter2 last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 first, Iter2 last) {
         _Tp _value{0u};
 
         _Tp sign = 1;
@@ -93,7 +93,7 @@ template <>
 class converter<bool_t> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD FORCE_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
         string_view_t __str(__first, __last);
         CONSTEXPR string_view_t __true{"true"};
         CONSTEXPR string_view_t __false{"false"};
@@ -113,7 +113,7 @@ template <class _Char>
 class converter<string::view<_Char>> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD FORCE_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
         using string_view_t = string::view<_Char>;
         if (*__first == '"' && *(__last - 1) == '"') {
             ++__first;
@@ -127,7 +127,7 @@ template <class _Char, class _Allocator>
 class converter<string::value<_Char, _Allocator>> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD FORCE_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
         if (*__first == '"' && *(__last - 1) == '"') {
             ++__first;
             --__last;
@@ -141,7 +141,7 @@ template <class _Char>
 class converter<std::basic_string<_Char>> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD FORCE_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
         if (*__first == '"' && *(__last - 1) == '"') {
             ++__first;
             --__last;
@@ -179,25 +179,25 @@ protected:
 
     friend class parser<self>;
 
-    FORCE_INLINE CONSTEXPR allocator_type& _allocator_() const noexcept {
+    ALWAYS_INLINE CONSTEXPR allocator_type& _allocator_() const noexcept {
         return static_cast<base&>(const_cast<self&>(*this));
     }
 
-    FORCE_INLINE CONSTEXPR auto& _array_() noexcept { return *(array_type*)(&_impl); }
-    FORCE_INLINE CONSTEXPR auto& _object_() noexcept { return *(object_type*)(&_impl); }
-    FORCE_INLINE CONSTEXPR auto& _view_() noexcept { return *(view_type*)(&_impl); }
-    FORCE_INLINE CONSTEXPR auto const& _array_() const noexcept { return *(array_type*)(&_impl); }
-    FORCE_INLINE CONSTEXPR auto const& _object_() const noexcept { return *(object_type*)(&_impl); }
-    FORCE_INLINE CONSTEXPR auto const& _view_() const noexcept { return *(view_type*)(&_impl); }
+    ALWAYS_INLINE CONSTEXPR auto& _array_() noexcept { return *(array_type*)(&_impl); }
+    ALWAYS_INLINE CONSTEXPR auto& _object_() noexcept { return *(object_type*)(&_impl); }
+    ALWAYS_INLINE CONSTEXPR auto& _view_() noexcept { return *(view_type*)(&_impl); }
+    ALWAYS_INLINE CONSTEXPR auto const& _array_() const noexcept { return *(array_type*)(&_impl); }
+    ALWAYS_INLINE CONSTEXPR auto const& _object_() const noexcept { return *(object_type*)(&_impl); }
+    ALWAYS_INLINE CONSTEXPR auto const& _view_() const noexcept { return *(view_type*)(&_impl); }
 
     template <class _uKey = key_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<is_same_v<_uKey, string_view>, string_view> _key_init_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<is_same_v<_uKey, string_view>, string_view> _key_init_(
         string_view __key) {
         return __key;
     }
 
     template <class _uKey = key_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<is_same_v<_uKey, string_type>, string_type> _key_init_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<is_same_v<_uKey, string_type>, string_type> _key_init_(
         string_view __key) {
         return string_type(__key.begin(), __key.end(), _allocator_());
     }
@@ -208,11 +208,11 @@ public:
 
     value() = default;
 
-    FORCE_INLINE CONSTEXPR value(self&& __o) : base(move(__o)), _type(__o._type), _impl(__o._impl) {
+    ALWAYS_INLINE CONSTEXPR value(self&& __o) : base(move(__o)), _type(__o._type), _impl(__o._impl) {
         __o._type = yaml::null;
     }
 
-    FORCE_INLINE CONSTEXPR value(allocator_type& __allocator) : base(__allocator) {}
+    ALWAYS_INLINE CONSTEXPR value(allocator_type& __allocator) : base(__allocator) {}
 
     ~value() {
         switch (_type) {
@@ -235,19 +235,19 @@ public:
         return *this;
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR bool_t empty() const noexcept { return _type == yaml::null; }
+    NODISCARD ALWAYS_INLINE CONSTEXPR bool_t empty() const noexcept { return _type == yaml::null; }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto type() const noexcept { return _type; }
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto type() const noexcept { return _type; }
 
     template <class _Tp>
-    NODISCARD FORCE_INLINE CONSTEXPR remove_cvref_t<_Tp> get() const {
+    NODISCARD ALWAYS_INLINE CONSTEXPR remove_cvref_t<_Tp> get() const {
         throw_if(_type != yaml::view, "invalid value");
         auto& __str_value = _view_();
         return converter<remove_cvref_t<_Tp>>::decode(__str_value.begin(), __str_value.end());
     }
 
     template <class _Tp>
-    NODISCARD FORCE_INLINE CONSTEXPR remove_cvref_t<_Tp> get(_Tp const& default_value) const {
+    NODISCARD ALWAYS_INLINE CONSTEXPR remove_cvref_t<_Tp> get(_Tp const& default_value) const {
         if (empty()) {
             return default_value;
         }
@@ -255,14 +255,14 @@ public:
     }
 
     template <class _Tp>
-    NODISCARD FORCE_INLINE CONSTEXPR remove_cvref_t<_Tp> get(_Tp&& default_value) const {
+    NODISCARD ALWAYS_INLINE CONSTEXPR remove_cvref_t<_Tp> get(_Tp&& default_value) const {
         if (empty()) {
             return move(default_value);
         }
         return get<_Tp>();
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto& operator[](string_view __key) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto& operator[](string_view __key) {
         throw_if(_type != yaml::object, "not object");
         for (auto& __node : _object_()) {
             if (__node.key == __key) {
@@ -273,7 +273,7 @@ public:
         return _object_().back().value;
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto const& operator[](string_view __key) const {
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto const& operator[](string_view __key) const {
         throw_if(_type != yaml::object, "not object");
         for (auto& __node : _object_()) {
             if (__node.key == __key) {
@@ -283,25 +283,25 @@ public:
         return default_value;
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto& object() {
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto& object() {
         throw_if(_type != yaml::object, "not object");
         return _object_();
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto const& object() const {
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto const& object() const {
         return const_cast<self*>(this)->object();
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto& array() {
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto& array() {
         throw_if(_type != yaml::array, "not array");
         return _array_();
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto const& array() const {
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto const& array() const {
         return const_cast<self*>(this)->array();
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR explicit operator bool_t() const noexcept {
+    NODISCARD ALWAYS_INLINE CONSTEXPR explicit operator bool_t() const noexcept {
         return _type != yaml::null;
     }
 
@@ -370,7 +370,7 @@ const typename value<Char, Policy, Allocator>::self value<Char, Policy, Allocato
     value<Char, Policy, Allocator>{};
 
 template <class _OStream, class Char, size_t Policy, class Allocator>
-INLINE _OStream& operator<<(_OStream& __out, value<Char, Policy, Allocator> const& __node) {
+ALWAYS_INLINE _OStream& operator<<(_OStream& __out, value<Char, Policy, Allocator> const& __node) {
     return value<Char, Policy, Allocator>::to(__out, __node);
 }
 
@@ -391,19 +391,19 @@ public:
 
 protected:
     template <class _uView = key_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<is_same_v<_uView, string_view>, key_type> _key_init_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<is_same_v<_uView, string_view>, key_type> _key_init_(
         string_view __view, allocator_type& __allocator) {
         return __view;
     }
 
     template <class _uView = key_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<is_same_v<_uView, string_type>, key_type> _key_init_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<is_same_v<_uView, string_type>, key_type> _key_init_(
         string_view __view, allocator_type& __allocator) {
         return string_type(__view.begin(), __view.end(), __allocator);
     }
 
     template <class _uView = view_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<is_same_v<_uView, string_view>, yaml_type> _value_init_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<is_same_v<_uView, string_view>, yaml_type> _value_init_(
         string_view __view, allocator_type& __allocator) {
         yaml_type __node;
         __node._type = yaml::view;
@@ -412,7 +412,7 @@ protected:
     }
 
     template <class _uView = view_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<is_same_v<_uView, string_type>, yaml_type> _value_init_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<is_same_v<_uView, string_type>, yaml_type> _value_init_(
         string_view __view, allocator_type& __allocator) {
         yaml_type __node;
         __node._type = yaml::view;
@@ -436,7 +436,7 @@ protected:
             lf = skip | 0x04,
         };
 
-        FORCE_INLINE CONSTEXPR char_helper() {
+        ALWAYS_INLINE CONSTEXPR char_helper() {
             _impl['-'] = self::hyphen;
             _impl['#'] = self::hash;
             _impl[' '] = self::space;
@@ -445,7 +445,7 @@ protected:
             _impl['\n'] = self::lf;
         }
 
-        FORCE_INLINE CONSTEXPR auto type(uint8_t __char) const noexcept { return _impl[__char]; };
+        ALWAYS_INLINE CONSTEXPR auto type(uint8_t __char) const noexcept { return _impl[__char]; };
     };
 
 #if __cplusplus >= 201703L
@@ -455,7 +455,7 @@ protected:
 #endif
 
     template <class _Iter1, class _Iter2>
-    FORCE_INLINE CONSTEXPR static auto _parse_value_(string_view* __view,
+    ALWAYS_INLINE CONSTEXPR static auto _parse_value_(string_view* __view,
                                                      _Iter1 __first,
                                                      _Iter2 __last) {
         auto __begin = __first;
@@ -486,7 +486,7 @@ protected:
 
 public:
     template <class _Iter1, class _Iter2>
-    INLINE CONSTEXPR auto operator()(yaml_type* __yaml,
+    ALWAYS_INLINE CONSTEXPR auto operator()(yaml_type* __yaml,
                                      _Iter1 __first,
                                      _Iter2 __last,
                                      size_t __capacity = 16u) {
@@ -631,7 +631,7 @@ typename parser<Json>::char_helper parser<Json>::_char_helper{};
 #endif
 
 template <class _Char, memory_policy _Policy, class _Allocator, class _Iter1, class _Iter2>
-INLINE CONSTEXPR auto parse(value<_Char, _Policy, _Allocator>* __yaml,
+ALWAYS_INLINE CONSTEXPR auto parse(value<_Char, _Policy, _Allocator>* __yaml,
                             _Iter1 __first,
                             _Iter2 __last) {
     using yaml_type = value<_Char, _Policy, _Allocator>;
@@ -643,7 +643,7 @@ INLINE CONSTEXPR auto parse(value<_Char, _Policy, _Allocator>* __yaml,
 
 namespace string {
 template <class Char, yaml::memory_policy Policy, class Allocator>
-INLINE CONSTEXPR value<Char, Allocator> from_yaml(yaml::value<Char, Policy, Allocator> const& node,
+ALWAYS_INLINE CONSTEXPR value<Char, Allocator> from_yaml(yaml::value<Char, Policy, Allocator> const& node,
                                                   size_t size = 1024u) {
     value<Char, Allocator> result(size);
     yaml::value<Char, Policy, Allocator>::to(result, node);

@@ -1,19 +1,18 @@
-#pragma once
+#ifndef QLIB_ANY_HPP
+#define QLIB_ANY_HPP
 
-#include "qlib/memory.hpp"
+#include "qlib/object.hpp"
 
 namespace qlib {
 
 namespace any {
-class bad_any_cast final : public exception {
-public:
-    char const* what() const noexcept override { return "bad any cast"; }
-};
 
 class value : public object {
 public:
     using base = object;
     using self = value;
+    using size_type = size_t;
+    constexpr static size_type threshold = 24u;
 
 protected:
     class manager : public object {
@@ -27,14 +26,12 @@ protected:
         virtual void move_construct(manager*) {}
         virtual void destroy() {}
         virtual bool_t has_value() const { return False; }
-        virtual void* get() { return nullptr; }
-        virtual void const* get() const { return nullptr; }
 #ifdef _TYPEINFO
         virtual std::type_info const& type() const { return typeid(void); }
 #endif
     };
 
-    template <class _Tp, bool_t = (sizeof(_Tp) <= 8u)>
+    template <class _Tp, bool_t = (sizeof(_Tp) <= threshold)>
     class derived;
 
     template <class _Tp>
@@ -43,26 +40,27 @@ protected:
         using base = manager;
         using self = derived;
         using value_type = _Tp;
+        friend class value;
 
     protected:
         value_type* _impl{nullptr};
 
     public:
+        ALWAYS_INLINE derived(value_type* __impl) : _impl{__impl} {}
+
         template <class _Up>
         derived(_Up&& __value) : _impl(new value_type(forward<_Up>(__value))) {}
 
         void construct(manager* __ptr) const override { new (__ptr) derived<value_type>(*_impl); }
 
         void move_construct(manager* __ptr) override {
-            new (__ptr) derived<value_type>(move(*_impl));
+            new (__ptr) derived<value_type>(_impl);
+            new (this) manager();
         }
 
         void destroy() override { delete _impl; }
 
-        bool_t has_value() const override { return True; }
-
-        void* get() override { return _impl; }
-        void const* get() const override { return _impl; }
+        bool_t has_value() const override { return _impl != nullptr; }
 
 #ifdef _TYPEINFO
         std::type_info const& type() const override { return typeid(value_type); }
@@ -74,11 +72,14 @@ protected:
     public:
         using base = manager;
         using self = derived;
+        friend class value;
 
     protected:
-        aligned_storage<8u, 8u>::type _impl;
+        aligned_storage<threshold, 8u>::type _impl;
 
     public:
+        ALWAYS_INLINE derived(decltype(_impl) __impl) : _impl(__impl) {}
+
         template <class _Up>
         derived(_Up&& __value) {
             new (&_impl) _Tp(forward<_Up>(__value));
@@ -89,14 +90,14 @@ protected:
 
         void construct(manager* __ptr) const override { new (__ptr) derived<_Tp>(*_get_()); }
 
-        void move_construct(manager* __ptr) override { new (__ptr) derived<_Tp>(move(*_get_())); }
+        void move_construct(manager* __ptr) override {
+            new (__ptr) derived<_Tp>(_impl);
+            new (this) manager();
+        }
 
         void destroy() override { _get_()->~_Tp(); }
 
         bool_t has_value() const override { return True; }
-
-        void* get() override { return &_impl; }
-        void const* get() const override { return &_impl; }
 
 #ifdef _TYPEINFO
         std::type_info const& type() const override { return typeid(_Tp); }
@@ -105,24 +106,26 @@ protected:
 
     typename aligned_storage<sizeof(derived<void*>), alignof(derived<void*>)>::type _storage{};
 
-    NODISCARD FORCE_INLINE manager* _manager_() noexcept { return (manager*)(&_storage); }
-    NODISCARD FORCE_INLINE manager const* _manager_() const noexcept {
+    NODISCARD ALWAYS_INLINE manager* _manager_() noexcept { return (manager*)(&_storage); }
+    NODISCARD ALWAYS_INLINE manager const* _manager_() const noexcept {
         return (manager*)(&_storage);
     }
 
 public:
-    FORCE_INLINE CONSTEXPR value() { new (&_storage) manager(); }
-    FORCE_INLINE CONSTEXPR value(self const& __a) { __a._manager_()->construct(_manager_()); }
-    FORCE_INLINE CONSTEXPR value(self&& __a) { __a._manager_()->move_construct(_manager_()); }
+    ALWAYS_INLINE CONSTEXPR value() { new (&_storage) manager(); }
+    ALWAYS_INLINE CONSTEXPR value(self const& __a) { __a._manager_()->construct(_manager_()); }
+    ALWAYS_INLINE CONSTEXPR value(self&& __a) { __a._manager_()->move_construct(_manager_()); }
+
+    ALWAYS_INLINE CONSTEXPR value(nullptr_t) : value() {}
 
     template <class _Tp, class Enable = enable_if_t<!is_same_v<remove_cvref_t<_Tp>, self>>>
-    FORCE_INLINE CONSTEXPR value(_Tp&& value) {
+    ALWAYS_INLINE CONSTEXPR value(_Tp&& value) {
         new (&_storage) derived<remove_cvref_t<_Tp>>(forward<_Tp>(value));
     }
 
-    FORCE_INLINE ~value() { _manager_()->destroy(); }
+    ALWAYS_INLINE ~value() { _manager_()->destroy(); }
 
-    FORCE_INLINE self& operator=(self const& __a) {
+    self& operator=(self const& __a) {
         if (unlikely(this != &__a)) {
             _manager_()->destroy();
             __a._manager_()->construct(_manager_());
@@ -130,46 +133,57 @@ public:
         return *this;
     }
 
-    FORCE_INLINE self& operator=(self&& __a) {
-        _manager_()->destroy();
-        __a._manager_()->move_construct(_manager_());
+    self& operator=(self&& __a) {
+        if (unlikely(this != &__a)) {
+            _manager_()->destroy();
+            __a._manager_()->move_construct(_manager_());
+        }
         return *this;
     }
 
-    template <class _Tp>
-    FORCE_INLINE self& operator=(_Tp&& value) {
+    self& operator=(nullptr_t) {
+        _manager_()->destroy();
+        new (&_storage) manager();
+        return *this;
+    }
+
+    template <class _Tp, class Enable = enable_if_t<!is_same_v<remove_cvref_t<_Tp>, self>>>
+    self& operator=(_Tp&& value) {
         _manager_()->destroy();
         new (&_storage) derived<remove_cvref_t<_Tp>>(forward<_Tp>(value));
         return *this;
     }
 
-    NODISCARD FORCE_INLINE auto has_value() const noexcept -> bool_t {
-        return _manager_()->has_value();
-    }
+    NODISCARD auto has_value() const noexcept -> bool_t { return _manager_()->has_value(); }
 
 #ifdef _TYPEINFO
-    NODISCARD FORCE_INLINE auto& type() const noexcept { return _manager_()->type(); }
+    NODISCARD auto& type() const noexcept { return _manager_()->type(); }
 #endif
 
-    FORCE_INLINE void reset() {
+    ALWAYS_INLINE void reset() {
         _manager_()->destroy();
         new (&_storage) manager();
     }
 
     template <class _Tp>
-    NODISCARD FORCE_INLINE auto get() -> _Tp {
+    NODISCARD ALWAYS_INLINE enable_if_t<sizeof(remove_cvref_t<_Tp>) <= threshold, _Tp> get() {
         using _Up = remove_cvref_t<_Tp>;
-        throw_if(!has_value() || _manager_()->type() != typeid(_Up), bad_any_cast{});
-        auto ptr = _manager_()->get();
-        return *((_Up*)(ptr));
+        throw_if(_manager_()->type() != typeid(_Up), "bad any cast");
+        auto __ptr = static_cast<derived<_Up>*>(_manager_());
+        return *((_Up*)(&__ptr->_impl));
     }
 
     template <class _Tp>
-    NODISCARD FORCE_INLINE auto get() const -> _Tp {
+    NODISCARD ALWAYS_INLINE enable_if_t<!(sizeof(remove_cvref_t<_Tp>) <= threshold), _Tp> get() {
         using _Up = remove_cvref_t<_Tp>;
-        throw_if(!has_value() || _manager_()->type() != typeid(_Up), bad_any_cast{});
-        auto ptr = _manager_()->get();
-        return *((_Up const*)(ptr));
+        throw_if(_manager_()->type() != typeid(_Up), "bad any cast");
+        auto __ptr = static_cast<derived<_Up>*>(_manager_());
+        return *((_Up*)(__ptr->_impl));
+    }
+
+    template <class _Tp>
+    _Tp get() const {
+        return const_cast<self&>(*this).template get<_Tp>();
     }
 };
 
@@ -178,17 +192,19 @@ public:
 using any_t = any::value;
 
 template <class _Tp>
-NODISCARD INLINE _Tp any_cast(any_t const& __a) {
+_Tp any_cast(any_t const& __a) {
     return __a.template get<remove_cvref_t<_Tp> const&>();
 }
 
 template <class _Tp>
-NODISCARD INLINE _Tp any_cast(any_t& __a) {
+_Tp any_cast(any_t& __a) {
     return __a.template get<remove_cvref_t<_Tp>&>();
 }
 
 template <class _Tp>
-NODISCARD INLINE _Tp any_cast(any_t&& __a) {
+_Tp any_cast(any_t&& __a) {
     return move(__a.template get<remove_cvref_t<_Tp>&>());
 }
 };  // namespace qlib
+
+#endif

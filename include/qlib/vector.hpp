@@ -48,18 +48,18 @@ protected:
     size_type _size{0u};
     size_type _capacity{0u};
 
-    NODISCARD FORCE_INLINE allocator_type& _allocator_() const noexcept {
+    NODISCARD ALWAYS_INLINE allocator_type& _allocator_() const noexcept {
         return static_cast<base&>(const_cast<self&>(*this));
     }
 
     template <class _uValue = value_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _move_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _move_(
         value_type* __dst, value_type* __src, size_type __size) noexcept {
         __builtin_memmove(__dst, __src, __size * sizeof(value_type));
     }
 
     template <class _uValue = value_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _move_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _move_(
         value_type* __dst, value_type* __src, size_type __size) noexcept {
         for (size_type i = 0; i < __size; ++i) {
             _allocator_().construct(&__dst[i], move(__src[i]));
@@ -67,13 +67,13 @@ protected:
     }
 
     template <class _uValue = value_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _copy_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _copy_(
         value_type* __dst, value_type* __src, size_type __size) const noexcept {
         __builtin_memmove(__dst, __src, __size * sizeof(value_type));
     }
 
     template <class _uValue = value_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _copy_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _copy_(
         value_type* __dst, value_type* __src, size_type __size) const noexcept {
         for (size_type i = 0; i < __size; ++i) {
             _allocator_().construct(&__dst[i], __src[i]);
@@ -81,18 +81,18 @@ protected:
     }
 
     template <class _uValue = value_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _destroy_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _destroy_(
         value_type* __src, size_type __size) noexcept {}
 
     template <class _uValue = value_type>
-    FORCE_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _destroy_(
+    ALWAYS_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _destroy_(
         value_type* __src, size_type __size) noexcept {
         for (size_type i = 0; i < __size; ++i) {
             _allocator_().destroy(&__src[i]);
         }
     }
 
-    INLINE void _update_capacity(size_type capacity) {
+    ALWAYS_INLINE void _update_capacity(size_type capacity) {
         auto __impl = _allocator_().template allocate<value_type>(capacity);
         _move_(__impl, _impl, _size);
         _destroy_(_impl, _size);
@@ -102,31 +102,31 @@ protected:
     }
 
 public:
-    INLINE constexpr value() noexcept(is_nothrow_constructible_v<base>) = default;
+    ALWAYS_INLINE constexpr value() noexcept(is_nothrow_constructible_v<base>) = default;
 
-    INLINE constexpr explicit value(allocator_type& allocator) noexcept(
+    ALWAYS_INLINE constexpr explicit value(allocator_type& allocator) noexcept(
         is_nothrow_constructible_v<base>)
             : base(allocator) {}
 
-    INLINE constexpr explicit value(size_type capacity) noexcept(is_nothrow_constructible_v<base>)
+    ALWAYS_INLINE constexpr explicit value(size_type capacity) noexcept(is_nothrow_constructible_v<base>)
             : _capacity(capacity) {
         _impl = _allocator_().template allocate<value_type>(capacity);
     }
 
-    INLINE constexpr explicit value(size_type capacity, allocator_type& allocator) noexcept(
+    ALWAYS_INLINE constexpr explicit value(size_type capacity, allocator_type& allocator) noexcept(
         is_nothrow_constructible_v<base>)
             : base(allocator), _capacity(capacity) {
         _impl = _allocator_().template allocate<value_type>(capacity);
     }
 
-    INLINE value(value const& other) : base(other), _size(other._size), _capacity(other._capacity) {
+    ALWAYS_INLINE value(value const& other) : base(other), _size(other._size), _capacity(other._capacity) {
         if (likely(_size > 0)) {
             _impl = _allocator_().template allocate<value_type>(_capacity);
             _copy_(_impl, other._impl, other._size);
         }
     }
 
-    INLINE constexpr value(value&& other) noexcept
+    ALWAYS_INLINE constexpr value(value&& other) noexcept
             : base(move(other)), _impl(other._impl), _size(other._size),
               _capacity(other._capacity) {
         other._impl = nullptr;
@@ -134,7 +134,7 @@ public:
         other._capacity = 0;
     }
 
-    INLINE ~value() noexcept(is_nothrow_destructible_v<allocator_type>) {
+    ALWAYS_INLINE ~value() noexcept(is_nothrow_destructible_v<allocator_type>) {
         _destroy_(_impl, _size);
         _allocator_().template deallocate<value_type>(_impl, _capacity);
         _impl = nullptr;
@@ -142,7 +142,7 @@ public:
         _capacity = 0;
     }
 
-    INLINE self& operator=(self const& other) noexcept(
+    ALWAYS_INLINE self& operator=(self const& other) noexcept(
         is_nothrow_constructible_v<self, self const&>) {
         if (likely(this != &other)) {
             this->~value();
@@ -152,19 +152,19 @@ public:
     }
 
     template <class... Args>
-    INLINE self& operator=(Args&&... args) noexcept(is_nothrow_constructible_v<self, Args...>) {
+    ALWAYS_INLINE self& operator=(Args&&... args) noexcept(is_nothrow_constructible_v<self, Args...>) {
         this->~value();
         new (this) self(forward<Args>(args)...);
         return *this;
     }
 
-    INLINE constexpr void reserve(size_type capacity) noexcept {
+    ALWAYS_INLINE constexpr void reserve(size_type capacity) noexcept {
         if (unlikely(capacity > _capacity)) {
             _update_capacity(capacity);
         }
     }
 
-    FORCE_INLINE CONSTEXPR void resize(size_type __size) noexcept {
+    ALWAYS_INLINE CONSTEXPR void resize(size_type __size) noexcept {
         reserve(__size);
         if CONSTEXPR (!is_trivially_copyable_v<value_type>) {
             if (_size < __size) {
@@ -180,31 +180,31 @@ public:
         _size = __size;
     }
 
-    INLINE constexpr pointer data() noexcept { return _impl; }
-    INLINE constexpr const_pointer data() const noexcept { return _impl; }
-    INLINE constexpr size_type size() const noexcept { return _size; }
-    INLINE constexpr size_type capacity() const noexcept { return _capacity; }
-    INLINE constexpr bool_t empty() const noexcept { return size() == 0; }
-    INLINE constexpr explicit operator bool_t() const noexcept { return !empty(); }
+    ALWAYS_INLINE constexpr pointer data() noexcept { return _impl; }
+    ALWAYS_INLINE constexpr const_pointer data() const noexcept { return _impl; }
+    ALWAYS_INLINE constexpr size_type size() const noexcept { return _size; }
+    ALWAYS_INLINE constexpr size_type capacity() const noexcept { return _capacity; }
+    ALWAYS_INLINE constexpr bool_t empty() const noexcept { return size() == 0; }
+    ALWAYS_INLINE constexpr explicit operator bool_t() const noexcept { return !empty(); }
 
-    INLINE constexpr iterator begin() noexcept { return _impl; }
-    INLINE constexpr iterator end() noexcept { return _impl + _size; }
-    INLINE constexpr const_iterator begin() const noexcept { return _impl; }
-    INLINE constexpr const_pointer end() const noexcept { return _impl + _size; }
+    ALWAYS_INLINE constexpr iterator begin() noexcept { return _impl; }
+    ALWAYS_INLINE constexpr iterator end() noexcept { return _impl + _size; }
+    ALWAYS_INLINE constexpr const_iterator begin() const noexcept { return _impl; }
+    ALWAYS_INLINE constexpr const_pointer end() const noexcept { return _impl + _size; }
 
-    INLINE constexpr reference operator[](size_type index) { return _impl[index]; }
+    ALWAYS_INLINE constexpr reference operator[](size_type index) { return _impl[index]; }
 
-    INLINE constexpr const_reference operator[](size_type index) const {
+    ALWAYS_INLINE constexpr const_reference operator[](size_type index) const {
         return const_cast<self&>(*this)[index];
     }
 
-    INLINE constexpr reference front() { return _impl[0]; }
-    INLINE constexpr reference back() { return _impl[_size - 1]; }
-    INLINE constexpr const_reference front() const { return const_cast<self&>(*this).front(); }
-    INLINE constexpr const_reference back() const { return const_cast<self&>(*this).back(); }
+    ALWAYS_INLINE constexpr reference front() { return _impl[0]; }
+    ALWAYS_INLINE constexpr reference back() { return _impl[_size - 1]; }
+    ALWAYS_INLINE constexpr const_reference front() const { return const_cast<self&>(*this).front(); }
+    ALWAYS_INLINE constexpr const_reference back() const { return const_cast<self&>(*this).back(); }
 
     template <class... Args>
-    INLINE constexpr void emplace_back(Args&&... args) noexcept(
+    ALWAYS_INLINE constexpr void emplace_back(Args&&... args) noexcept(
         is_nothrow_constructible_v<value_type, Args...>) {
         size_type capacity = _size + 1u;
         if (unlikely(capacity > _capacity)) {
@@ -216,19 +216,19 @@ public:
     }
 
     template <class... Args>
-    INLINE constexpr void push_back(Args&&... args) noexcept(
+    ALWAYS_INLINE constexpr void push_back(Args&&... args) noexcept(
         is_nothrow_constructible_v<value_type, Args...>) {
         emplace_back(forward<Args>(args)...);
     }
 
-    INLINE constexpr void pop_back() noexcept(is_nothrow_destructible_v<value_type>) {
+    ALWAYS_INLINE constexpr void pop_back() noexcept(is_nothrow_destructible_v<value_type>) {
         if (likely(_size > 0)) {
             _allocator_().destroy(_impl + _size - 1);
             --_size;
         }
     }
 
-    FORCE_INLINE CONSTEXPR auto& allocator() const noexcept { return _allocator_(); }
+    ALWAYS_INLINE CONSTEXPR auto& allocator() const noexcept { return _allocator_(); }
 };
 
 };  // namespace vector

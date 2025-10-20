@@ -35,26 +35,6 @@ endif()
 include(FetchContent)
 
 FetchContent_Declare(
-    spdlog
-    GIT_REPOSITORY https://github.com/gabime/spdlog.git
-    GIT_TAG v1.15.0
-    GIT_SHALLOW ON
-)
-
-FetchContent_MakeAvailable(spdlog)
-target_link_libraries(${TARGET_NAME} PRIVATE spdlog::spdlog)
-
-# FetchContent_Declare(
-#     yaml-cpp
-#     GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-#     GIT_TAG 0.8.0
-#     GIT_SHALLOW ON
-# )
-
-# FetchContent_MakeAvailable(yaml-cpp)
-# target_link_libraries(${TARGET_NAME} PRIVATE yaml-cpp)
-
-FetchContent_Declare(
     portaudio
     GIT_REPOSITORY https://github.com/PortAudio/portaudio.git
     GIT_TAG v19.7.0

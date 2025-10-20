@@ -1,6 +1,5 @@
-#pragma once
-
-#define ARGPARSE_IMPLEMENTATION
+#ifndef QLIB_ARGPARSE_HPP
+#define QLIB_ARGPARSE_HPP
 
 #include "qlib/any.h"
 #include "qlib/string.h"
@@ -21,7 +20,7 @@ enum : int32_t {
 template <class _Tp, class Enable = void>
 struct converter : public object {
     template <class Iter1, class Iter2>
-    NODISCARD INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
         return _Tp{__first, __last};
     }
 };
@@ -30,7 +29,7 @@ template <class _Tp>
 class converter<_Tp, enable_if_t<is_unsigned_v<_Tp>>> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
         _Tp __val{0u};
         while (__first != __last && is_digit(*__first)) {
             __val = __val * 10u + (*__first - '0');
@@ -47,7 +46,7 @@ template <class _Tp>
 class converter<_Tp, enable_if_t<is_signed_v<_Tp>>> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD INLINE CONSTEXPR static auto decode(Iter1 first, Iter2 last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 first, Iter2 last) {
         _Tp sign{1u};
         if (*first == '-') {
             sign = -1;
@@ -64,7 +63,7 @@ template <class _Tp>
 class converter<_Tp, enable_if_t<is_floating_point_v<_Tp>>> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD INLINE CONSTEXPR static auto decode(Iter1 first, Iter2 last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 first, Iter2 last) {
         _Tp _value{0u};
 
         _Tp sign = 1;
@@ -98,7 +97,7 @@ template <>
 class converter<bool_t> : public object {
 public:
     template <class Iter1, class Iter2>
-    NODISCARD INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR static auto decode(Iter1 __first, Iter2 __last) {
         string_view_t __str(__first, __last);
         CONSTEXPR string_view_t __true{"true"};
         CONSTEXPR string_view_t __false{"false"};
@@ -132,32 +131,32 @@ protected:
 
 public:
     template <class String>
-    FORCE_INLINE CONSTEXPR argument(String&& name) : _name{forward<String>(name)} {}
+    ALWAYS_INLINE CONSTEXPR argument(String&& name) : _name{forward<String>(name)} {}
 
     template <class Name, class _Tp>
-    FORCE_INLINE CONSTEXPR argument(Name&& name, _Tp&& default_value)
+    ALWAYS_INLINE CONSTEXPR argument(Name&& name, _Tp&& default_value)
             : _name{forward<Name&&>(name)}, _default_value{forward<_Tp&&>(default_value)} {}
 
-    FORCE_INLINE CONSTEXPR void parse(string_view value) { _value = value; }
+    ALWAYS_INLINE CONSTEXPR void parse(string_view value) { _value = value; }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto& name() const noexcept { return _name; }
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto& name() const noexcept { return _name; }
 
     template <class... Args, class = enable_if_t<sizeof...(Args)>>
-    FORCE_INLINE CONSTEXPR argument& name(Args&&... args) {
+    ALWAYS_INLINE CONSTEXPR argument& name(Args&&... args) {
         _name = decltype(_name)(forward<Args>(args)...);
         return *this;
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto& help() const noexcept { return _help; }
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto& help() const noexcept { return _help; }
 
     template <class... Args, class = enable_if_t<sizeof...(Args)>>
-    FORCE_INLINE CONSTEXPR argument& help(Args&&... args) {
+    ALWAYS_INLINE CONSTEXPR argument& help(Args&&... args) {
         _help = decltype(_help)(forward<Args>(args)...);
         return *this;
     }
 
     template <typename _Tp>
-    NODISCARD FORCE_INLINE CONSTEXPR _Tp get() const {
+    NODISCARD ALWAYS_INLINE CONSTEXPR _Tp get() const {
         if (_value.empty()) {
             return any_cast<_Tp>(_default_value);
         } else {
@@ -166,12 +165,12 @@ public:
     }
 
     template <class... Args>
-    FORCE_INLINE CONSTEXPR argument& default_value(Args&&... args) {
+    ALWAYS_INLINE CONSTEXPR argument& default_value(Args&&... args) {
         _default_value = decltype(_default_value)(forward<Args>(args)...);
         return *this;
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR bool has_value() const noexcept {
+    NODISCARD ALWAYS_INLINE CONSTEXPR bool has_value() const noexcept {
         return _default_value.has_value() || (!_value.empty());
     }
 };
@@ -194,9 +193,12 @@ protected:
     arguments_type _positional_arguments;
     arguments_type _optional_arguments;
 
-    constexpr static string_view _help_str{"help"};
+    CONSTEXPR static string_view _hyphen_str{"-"};
+    CONSTEXPR static string_view _d_hyphen_str{"--"};
+    CONSTEXPR static string_view _h_str{"-h"};
+    CONSTEXPR static string_view _help_str{"--help"};
 
-    NODISCARD FORCE_INLINE CONSTEXPR static typename argument_type::ptr _find_(
+    NODISCARD ALWAYS_INLINE CONSTEXPR static typename argument_type::ptr _find_(
         arguments_type const& args, string_view name) noexcept {
         typename argument_type::ptr result{nullptr};
         for (auto& arg : args) {
@@ -208,7 +210,7 @@ protected:
         return result;
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto _help_() const {
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto _help_() const {
         string_t out{1024u};
 
         out << "usage: " << _name << " ";
@@ -258,12 +260,12 @@ protected:
 
 public:
     template <class String>
-    NODISCARD FORCE_INLINE CONSTEXPR parser(String name) noexcept : _name{forward<String>(name)} {}
+    NODISCARD ALWAYS_INLINE CONSTEXPR parser(String name) noexcept : _name{forward<String>(name)} {}
 
     parser(self const&) = delete;
     parser(self&&) = delete;
 
-    FORCE_INLINE ~parser() {
+    ALWAYS_INLINE ~parser() {
         for (auto& arg : _positional_arguments) {
             delete arg;
         }
@@ -276,14 +278,14 @@ public:
     self& operator=(self&&) = delete;
 
     template <class... Args>
-    NODISCARD FORCE_INLINE CONSTEXPR argument_type& add_argument(string_view name,
+    NODISCARD ALWAYS_INLINE CONSTEXPR argument_type& add_argument(string_view name,
                                                                  Args&&... args) noexcept {
         typename argument_type::ptr arg;
 
-        if (name.starts_with("--")) {
+        if (name.starts_with(_d_hyphen_str)) {
             arg = new argument_type(name.data() + 2, forward<Args>(args)...);
             _optional_arguments.emplace_back(arg);
-        } else if (name.starts_with("-")) {
+        } else if (name.starts_with(_hyphen_str)) {
             arg = new argument_type(name.data() + 1, forward<Args>(args)...);
             _optional_arguments.emplace_back(arg);
         } else {
@@ -295,11 +297,11 @@ public:
     }
 
     template <typename _Tp>
-    NODISCARD INLINE CONSTEXPR _Tp get(string_view __name) const {
+    NODISCARD ALWAYS_INLINE CONSTEXPR _Tp get(string_view __name) const {
         string_view __n;
-        if (__name.starts_with("--")) {
+        if (__name.starts_with(_d_hyphen_str)) {
             __n = __name.data() + 2;
-        } else if (__name.starts_with("-")) {
+        } else if (__name.starts_with(_hyphen_str)) {
             __n = __name.data() + 1;
         } else {
             __n = __name;
@@ -316,13 +318,11 @@ public:
     }
 
     template <class It1, class It2>
-    NODISCARD FORCE_INLINE CONSTEXPR auto parse_args(It1 begin, It2 end) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto parse_args(It1 begin, It2 end) {
         int32_t result{0};
 
         do {
-            CONSTEXPR string_view __h_str{"-h"};
-            CONSTEXPR string_view __help_str{"--help"};
-            if (distance(begin, end) == 1 && (__h_str == *begin || __help_str == *begin)) {
+            if (distance(begin, end) == 1 && (_h_str == *begin || _help_str == *begin)) {
                 result = argparse::help;
                 break;
             }
@@ -374,12 +374,14 @@ public:
         return result;
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto parse_args(int32_t argc, char* argv[]) {
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto parse_args(int32_t argc, char* argv[]) {
         return parse_args(argv + 1, argv + argc);
     }
 
-    NODISCARD FORCE_INLINE CONSTEXPR auto help() const { return _help_(); }
+    NODISCARD ALWAYS_INLINE CONSTEXPR auto help() const { return _help_(); }
 };
 
 };  // namespace argparse
 };  // namespace qlib
+
+#endif

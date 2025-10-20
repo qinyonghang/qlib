@@ -7,12 +7,10 @@ namespace qlib {
 #define NODISCARD [[nodiscard]]
 #define ATTR_UNUSED __attribute__((__unused__))
 #if __cplusplus >= 201703L
-#define FORCE_INLINE __attribute__((always_inline))
-#define INLINE __attribute__((always_inline)) inline
+#define ALWAYS_INLINE inline __attribute__((always_inline))
 #define CONSTEXPR constexpr
 #else
-#define FORCE_INLINE inline
-#define INLINE inline
+#define ALWAYS_INLINE inline
 #define CONSTEXPR
 #endif
 
@@ -57,7 +55,7 @@ public:
     constexpr static bool_t False{qlib::False};
 
 protected:
-    INLINE CONSTEXPR object() noexcept = default;
+    ALWAYS_INLINE CONSTEXPR object() noexcept = default;
 };
 
 template <class T>
@@ -73,14 +71,14 @@ protected:
 public:
     reference() noexcept = delete;
 
-    FORCE_INLINE CONSTEXPR reference(reference const&) noexcept = default;
-    FORCE_INLINE CONSTEXPR reference(reference&&) noexcept = default;
-    FORCE_INLINE CONSTEXPR reference& operator=(reference const&) noexcept = default;
-    FORCE_INLINE CONSTEXPR reference& operator=(reference&&) noexcept = default;
+    ALWAYS_INLINE CONSTEXPR reference(reference const&) noexcept = default;
+    ALWAYS_INLINE CONSTEXPR reference(reference&&) noexcept = default;
+    ALWAYS_INLINE CONSTEXPR reference& operator=(reference const&) noexcept = default;
+    ALWAYS_INLINE CONSTEXPR reference& operator=(reference&&) noexcept = default;
 
-    FORCE_INLINE CONSTEXPR reference(value_type& allocator) noexcept : _impl(&allocator) {}
-    FORCE_INLINE CONSTEXPR reference(value_type* allocator) noexcept : _impl(allocator) {}
-    NODISCARD FORCE_INLINE CONSTEXPR operator value_type&() noexcept { return *_impl; }
+    ALWAYS_INLINE CONSTEXPR reference(value_type& allocator) noexcept : _impl(&allocator) {}
+    ALWAYS_INLINE CONSTEXPR reference(value_type* allocator) noexcept : _impl(allocator) {}
+    NODISCARD ALWAYS_INLINE CONSTEXPR operator value_type&() noexcept { return *_impl; }
 };
 
 template <class _Tp>
@@ -95,13 +93,13 @@ struct traits<std::function<_Res(_Args...)>> : public object {
 };
 #endif
 
-NODISCARD INLINE CONSTEXPR auto likely(bool_t ok) noexcept {
+NODISCARD ALWAYS_INLINE CONSTEXPR auto likely(bool_t ok) noexcept {
     return __builtin_expect(ok, 1);
 }
 
 // #define likely(ok) __builtin_expect(ok, 1)
 
-NODISCARD INLINE CONSTEXPR auto unlikely(bool_t ok) noexcept {
+NODISCARD ALWAYS_INLINE CONSTEXPR auto unlikely(bool_t ok) noexcept {
     return __builtin_expect(ok, 0);
 }
 
@@ -111,14 +109,6 @@ class exception : public object {
 public:
     virtual char const* what() const noexcept { return nullptr; }
 };
-
-CONSTEXPR static auto is_constant_evaluated() noexcept {
-#if defined(__cpp_lib_is_constant_evaluated)
-    return __builtin_is_constant_evaluated();
-#else
-    return False;
-#endif
-}
 
 template <typename _Tp, typename _Up = _Tp&&>
 _Up __declval(int);
@@ -209,6 +199,8 @@ template <>
 struct _is_unsigned_helper<uint32_t> : public true_type {};
 template <>
 struct _is_unsigned_helper<uint64_t> : public true_type {};
+template <>
+struct _is_unsigned_helper<size_t> : public true_type {};
 
 template <class T>
 struct is_unsigned : public _is_unsigned_helper<remove_cv_t<T>> {};
@@ -217,8 +209,8 @@ constexpr static bool_t is_unsigned_v = is_unsigned<T>::value;
 
 template <class T>
 struct _is_integral_helper : public false_type {};
-template <>
-struct _is_integral_helper<bool_t> : public true_type {};
+// template <>
+// struct _is_integral_helper<bool_t> : public true_type {};
 template <>
 struct _is_integral_helper<int8_t> : public true_type {};
 template <>
@@ -417,13 +409,29 @@ template <typename _Tp>
 struct is_arithmetic : public __or_<is_integral<_Tp>, is_floating_point<_Tp>>::type {};
 
 template <class _Tp>
+constexpr static bool_t is_arithmetic_v = is_arithmetic<_Tp>::value;
+
+template <class _Tp>
 struct _is_pointer_helper : public false_type {};
 
 template <typename _Tp>
 struct _is_pointer_helper<_Tp*> : public true_type {};
 
+#ifdef _UNIQUE_PTR_H
+template <class _Tp, class _Dp>
+struct _is_pointer_helper<std::unique_ptr<_Tp, _Dp>> : public true_type {};
+#endif
+
+#ifdef _SHARED_PTR_H
+template <class _Tp>
+struct _is_pointer_helper<std::shared_ptr<_Tp>> : public true_type {};
+#endif
+
 template <class _Tp>
 struct is_pointer : public _is_pointer_helper<remove_cv_t<_Tp>>::type {};
+
+template <class _Tp>
+constexpr static bool_t is_pointer_v = is_pointer<_Tp>::value;
 
 template <typename _Tp>
 struct __is_member_pointer_helper : public false_type {};
@@ -575,6 +583,37 @@ struct is_base_of : public bool_constant<__is_base_of(_Base, _Derived)> {};
 template <class _Base, class _Derived>
 constexpr static bool_t is_base_of_v = is_base_of<_Base, _Derived>::value;
 
+template <class _From,
+          class _To,
+          bool = __or_<is_void<_From>, is_function<_To>, is_array<_To>>::value>
+struct __is_convertible_helper {
+    typedef class is_void<_To>::type type;
+};
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wctor-dtor-privacy"
+template <class _From, class _To>
+class __is_convertible_helper<_From, _To, false> {
+    template <class _To1>
+    static void __test_aux(_To1) noexcept;
+
+    template <class _From1, class _To1, class = decltype(__test_aux<_To1>(std::declval<_From1>()))>
+    static true_type __test(int);
+
+    template <class, class>
+    static false_type __test(...);
+
+public:
+    typedef decltype(__test<_From, _To>(0)) type;
+};
+#pragma GCC diagnostic pop
+
+template <class _From, class _To>
+struct is_convertible : public __is_convertible_helper<_From, _To>::type {};
+
+template <class _From, class _To>
+constexpr static bool_t is_convertible_v = is_convertible<_From, _To>::value;
+
 template <class _Tp>
 struct _is_container_helper_ : public false_type {};
 
@@ -627,15 +666,27 @@ struct unsigned_traits<int64_t> {
     using type = uint64_t;
 };
 
+constexpr bool_t _is_constant_evaluated_(int) noexcept {
+    return True;
+}
+
+bool_t _is_constant_evaluated_(...) noexcept {
+    return False;
+}
+
+ALWAYS_INLINE constexpr auto is_constant_evaluated() {
+    return _is_constant_evaluated_(0);
+}
+
 #ifndef _MOVE_H
 
 template <class _Tp>
-INLINE constexpr _Tp&& forward(remove_reference_t<_Tp>& t) noexcept {
+ALWAYS_INLINE constexpr _Tp&& forward(remove_reference_t<_Tp>& t) noexcept {
     return static_cast<_Tp&&>(t);
 }
 
 template <class _Tp>
-INLINE constexpr _Tp&& forward(remove_reference_t<_Tp>&& t) noexcept {
+ALWAYS_INLINE constexpr _Tp&& forward(remove_reference_t<_Tp>&& t) noexcept {
     return static_cast<_Tp&&>(t);
 }
 
@@ -667,14 +718,14 @@ struct pair : public object {
     pair& operator=(pair&&) = default;
 
     template <class _uKey, class _uValue>
-    FORCE_INLINE CONSTEXPR pair(_uKey&& __key, _uValue&& __value)
+    ALWAYS_INLINE CONSTEXPR pair(_uKey&& __key, _uValue&& __value)
             : key(forward<_uKey>(__key)), value(forward<_uValue>(__value)) {}
 };
 
 template <class Tag>
 struct _distance_helper {
     template <class Iter1, class Iter2>
-    NODISCARD INLINE static CONSTEXPR auto call(Iter1 __first, Iter2 __last) noexcept {
+    NODISCARD ALWAYS_INLINE static CONSTEXPR auto call(Iter1 __first, Iter2 __last) noexcept {
         typename iterator_traits<Iter1>::difference_type __n = 0;
         while (likely(__first != __last)) {
             ++__n;
@@ -687,13 +738,13 @@ struct _distance_helper {
 template <>
 struct _distance_helper<random_access_iterator_tag> {
     template <class Iter1, class Iter2>
-    NODISCARD INLINE static constexpr auto call(Iter1 __first, Iter2 __last) noexcept {
+    NODISCARD ALWAYS_INLINE static constexpr auto call(Iter1 __first, Iter2 __last) noexcept {
         return __last - __first;
     }
 };
 
 template <class Iter1, class Iter2>
-NODISCARD INLINE constexpr auto distance(Iter1 __first, Iter2 __last) noexcept {
+NODISCARD ALWAYS_INLINE constexpr auto distance(Iter1 __first, Iter2 __last) noexcept {
     return _distance_helper<iterator_category_t<Iter1>>::call(__first, __last);
 }
 
@@ -703,7 +754,7 @@ struct _equal_helper;
 template <>
 struct _equal_helper<False> {
     template <class Iter1, class Iter2, class Iter3>
-    NODISCARD INLINE static constexpr bool_t call(Iter1 begin1, Iter2 end1, Iter3 begin2) {
+    NODISCARD ALWAYS_INLINE static constexpr bool_t call(Iter1 begin1, Iter2 end1, Iter3 begin2) {
         if (likely(begin1 != begin2)) {
             while ((begin1 != end1)) {
                 if (unlikely(*begin1 != *begin2)) {
@@ -721,7 +772,9 @@ struct _equal_helper<False> {
 template <>
 struct _equal_helper<True> {
     template <class T>
-    NODISCARD INLINE static constexpr bool_t call(T const* begin1, T const* end1, T const* begin2) {
+    NODISCARD ALWAYS_INLINE static constexpr bool_t call(T const* begin1,
+                                                         T const* end1,
+                                                         T const* begin2) {
         if (is_constant_evaluated()) {
             return _equal_helper<False>::call(begin1, end1, begin2);
         }
@@ -735,7 +788,7 @@ struct _equal_helper<True> {
 };
 
 template <class Iter1, class Iter2, class Iter3>
-NODISCARD INLINE CONSTEXPR bool_t equal(Iter1 begin1, Iter2 end1, Iter3 begin2) {
+NODISCARD ALWAYS_INLINE CONSTEXPR bool_t equal(Iter1 begin1, Iter2 end1, Iter3 begin2) {
     using value_type1 = typename iterator_traits<Iter1>::value_type;
     using value_type2 = typename iterator_traits<Iter2>::value_type;
     using value_type3 = typename iterator_traits<Iter3>::value_type;
@@ -750,7 +803,7 @@ struct _copy_helper;
 template <>
 struct _copy_helper<False> {
     template <class Iter1, class Iter2, class Iter3>
-    INLINE CONSTEXPR static Iter3 call(Iter1 begin1, Iter2 end1, Iter3 begin2) noexcept {
+    ALWAYS_INLINE CONSTEXPR static Iter3 call(Iter1 begin1, Iter2 end1, Iter3 begin2) noexcept {
         if (likely(begin1 != begin2)) {
             while (likely(begin1 != end1)) {
                 *begin2 = *begin1;
@@ -765,7 +818,7 @@ struct _copy_helper<False> {
 template <>
 struct _copy_helper<True> {
     template <class T>
-    INLINE static CONSTEXPR T* call(T const* begin1, T const* end1, T* begin2) noexcept {
+    ALWAYS_INLINE static CONSTEXPR T* call(T const* begin1, T const* end1, T* begin2) noexcept {
         if (is_constant_evaluated()) {
             return _copy_helper<False>::call(begin1, end1, begin2);
         }
@@ -778,7 +831,7 @@ struct _copy_helper<True> {
 };
 
 template <class Iter1, class Iter2, class Iter3>
-INLINE CONSTEXPR Iter3 copy(Iter1 begin1, Iter2 end1, Iter3 begin2) noexcept {
+ALWAYS_INLINE CONSTEXPR Iter3 copy(Iter1 begin1, Iter2 end1, Iter3 begin2) noexcept {
     using value_type1 = typename iterator_traits<Iter1>::value_type;
     using value_type2 = typename iterator_traits<Iter2>::value_type;
     using value_type3 = typename iterator_traits<Iter3>::value_type;
@@ -788,12 +841,12 @@ INLINE CONSTEXPR Iter3 copy(Iter1 begin1, Iter2 end1, Iter3 begin2) noexcept {
 }
 
 template <class Char>
-NODISCARD INLINE CONSTEXPR auto is_digit(Char c) -> bool_t {
+NODISCARD ALWAYS_INLINE CONSTEXPR auto is_digit(Char c) -> bool_t {
     return c >= '0' && c <= '9';
 }
 
 // template <class T, class Enable = enable_if_t<is_unsigned_v<T>>>
-// INLINE CONSTEXPR auto len(T value) -> size_t {
+// ALWAYS_INLINE CONSTEXPR auto len(T value) -> size_t {
 //     size_t __n = 1;
 //     constexpr T __b1 = 10u;
 //     constexpr T __b2 = 100u;
@@ -821,17 +874,25 @@ NODISCARD INLINE CONSTEXPR auto is_digit(Char c) -> bool_t {
 //     return __n;
 // }
 
-NODISCARD INLINE CONSTEXPR size_t len(uint8_t __value) noexcept {
+NODISCARD ALWAYS_INLINE CONSTEXPR size_t len(uint8_t __value) noexcept {
     return __value < 10u ? 1 : (__value < 100u ? 2u : 3u);
 }
 
-NODISCARD INLINE CONSTEXPR size_t len(uint16_t __value) noexcept {
+NODISCARD ALWAYS_INLINE CONSTEXPR size_t len(int8_t __v) noexcept {
+    return __v >= 0 ? len(uint8_t(__v)) : len(uint8_t(uint8_t(~__v) + 1u)) + 1u;
+}
+
+NODISCARD ALWAYS_INLINE CONSTEXPR size_t len(uint16_t __value) noexcept {
     return __value < 10u
         ? 1
         : (__value < 100u ? 2u : (__value < 1000u ? 3u : (__value < 10000u ? 4u : 5u)));
 }
 
-NODISCARD INLINE CONSTEXPR auto len(uint32_t value) -> size_t {
+NODISCARD ALWAYS_INLINE CONSTEXPR size_t len(int16_t __v) noexcept {
+    return __v >= 0 ? len(uint16_t(__v)) : len(uint16_t(uint16_t(~__v) + 1u)) + 1u;
+}
+
+NODISCARD ALWAYS_INLINE CONSTEXPR auto len(uint32_t value) -> size_t {
     if (value < 10u)
         return 1;
     if (value < 100u)
@@ -853,7 +914,11 @@ NODISCARD INLINE CONSTEXPR auto len(uint32_t value) -> size_t {
     return 10;
 }
 
-NODISCARD INLINE CONSTEXPR auto len(uint64_t value) -> size_t {
+NODISCARD ALWAYS_INLINE CONSTEXPR auto len(int32_t __v) -> size_t {
+    return __v >= 0 ? len(uint32_t(__v)) : len(uint32_t(uint32_t(~__v) + 1u)) + 1u;
+}
+
+NODISCARD ALWAYS_INLINE CONSTEXPR auto len(uint64_t value) -> size_t {
     if (value < 10u)
         return 1;
     if (value < 100u)
@@ -895,8 +960,25 @@ NODISCARD INLINE CONSTEXPR auto len(uint64_t value) -> size_t {
     return 20;
 }
 
+NODISCARD ALWAYS_INLINE CONSTEXPR auto len(int64_t __v) -> size_t {
+    return __v >= 0 ? len(uint64_t(__v)) : len(uint64_t(uint64_t(~__v) + 1u)) + 1u;
+}
+
+NODISCARD ALWAYS_INLINE CONSTEXPR auto len(size_t __v) -> size_t {
+    return len(uint64_t(__v));
+}
+
+template <class Char>
+NODISCARD ALWAYS_INLINE constexpr size_t len(Char const* str) noexcept {
+    size_t size{0u};
+    while (str[size] != '\0') {
+        ++size;
+    }
+    return size;
+}
+
 template <class _Tp>
-[[noreturn]] auto __throw(_Tp&& __e) {
+[[noreturn]] ALWAYS_INLINE CONSTEXPR auto __throw(_Tp&& __e) {
     throw forward<_Tp>(__e);
 }
 
@@ -904,22 +986,22 @@ template <class _Tp>
 // auto __throw(_Tp&& __e ATTR_UNUSED) {}
 
 template <class _Tp>
-INLINE auto throw_if(bool_t __ok, _Tp&& __e) {
+ALWAYS_INLINE CONSTEXPR auto throw_if(bool_t __ok, _Tp&& __e) {
     if (unlikely(__ok)) {
         __throw(forward<_Tp>(__e));
     }
 }
 
 template <class _Tp>
-INLINE auto throw_if_not(bool_t __ok, _Tp&& __e) {
+ALWAYS_INLINE CONSTEXPR auto throw_if_not(bool_t __ok, _Tp&& __e) {
     throw_if(!__ok, forward<_Tp>(__e));
 }
 
-INLINE auto throw_if(bool_t __ok) {
+ALWAYS_INLINE CONSTEXPR auto throw_if(bool_t __ok) {
     throw_if(__ok, exception{});
 }
 
-INLINE auto throw_if_not(bool_t __ok) {
+ALWAYS_INLINE CONSTEXPR auto throw_if_not(bool_t __ok) {
     throw_if(!__ok);
 }
 
@@ -928,19 +1010,19 @@ protected:
     char const* _impl;
 
 public:
-    _str_exception_(char const* __str) : _impl(__str) {}
+    ALWAYS_INLINE CONSTEXPR _str_exception_(char const* __str) : _impl(__str) {}
     const char* what() const noexcept override { return _impl; }
 };
 
-[[noreturn]] auto __throw(char const* __str) {
+[[noreturn]] ALWAYS_INLINE CONSTEXPR auto __throw(char const* __str) {
     __throw(_str_exception_{__str});
 }
 
-INLINE auto throw_if(bool_t __ok, char const* __str) {
+ALWAYS_INLINE CONSTEXPR auto throw_if(bool_t __ok, char const* __str) {
     throw_if(__ok, _str_exception_{__str});
 }
 
-INLINE auto throw_if_not(bool_t __ok, char const* __str) {
+ALWAYS_INLINE CONSTEXPR auto throw_if_not(bool_t __ok, char const* __str) {
     throw_if(!__ok, _str_exception_{__str});
 }
 
@@ -997,7 +1079,7 @@ auto min(_Tp a, _Tp b) {
 }
 
 template <class _Tp, class _Iter1, class _Iter2>
-NODISCARD FORCE_INLINE CONSTEXPR auto find(_Iter1 __first, _Iter2 __last, _Tp const& __value) {
+NODISCARD ALWAYS_INLINE CONSTEXPR auto find(_Iter1 __first, _Iter2 __last, _Tp const& __value) {
     _Iter1 __i{__first};
 
     while (__i != __last && *__i != __value) {
@@ -1008,10 +1090,10 @@ NODISCARD FORCE_INLINE CONSTEXPR auto find(_Iter1 __first, _Iter2 __last, _Tp co
 }
 
 template <class _Tp, class _Iter1, class _Iter2, class _Equal>
-NODISCARD FORCE_INLINE CONSTEXPR auto find(_Iter1 __first,
-                                           _Iter2 __last,
-                                           _Tp const& __value,
-                                           _Equal __equal) {
+NODISCARD ALWAYS_INLINE CONSTEXPR auto find(_Iter1 __first,
+                                            _Iter2 __last,
+                                            _Tp const& __value,
+                                            _Equal __equal) {
     _Iter1 __i{__first};
 
     while (__i != __last && !__equal(*__i, __value)) {
@@ -1020,5 +1102,17 @@ NODISCARD FORCE_INLINE CONSTEXPR auto find(_Iter1 __first,
 
     return __i;
 }
+
+#if defined(_TIME_H)
+NODISCARD ALWAYS_INLINE auto localtime(time_t __t) {
+    struct tm local_tm;
+#ifdef _MSC_VER
+    localtime_s(&local_tm, &__t);
+#else
+    localtime_r(&__t, &local_tm);
+#endif
+    return local_tm;
+}
+#endif
 
 };  // namespace qlib

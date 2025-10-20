@@ -84,7 +84,6 @@ public:
             }
 
             _logger.init(_config["logger"]);
-            _logger.trace("Application: config: {}", string::from_yaml(_config, _yaml_text.size()));
 
             result = _nlu.init(_config["nlu"], _data_manager);
             if (0 != result) {
@@ -118,20 +117,23 @@ public:
         int32_t result{0};
 
         do {
-            auto nlu_future = std::async(std::launch::async, [this]() { return _nlu.exec(); });
-            auto recognizer_future =
-                std::async(std::launch::async, [this]() { return _recognizer.exec(); });
-            auto kws_future = std::async(std::launch::async, [this]() { return _kws.exec(); });
+            auto nlu_future = std::async([this]() { return _nlu.exec(); });
+            auto recognizer_future = std::async([this]() { return _recognizer.exec(); });
+            auto kws_future = std::async([this]() { return _kws.exec(); });
+
             _audio_reader.start();
+
             {
                 std::mutex mutex;
                 std::unique_lock<std::mutex> lock(mutex);
                 _condition.wait(lock);
             }
             _logger.info("Application: received exit signal!");
+
             _kws.exit();
             _recognizer.exit();
             _nlu.exit();
+
             result = kws_future.get();
             if (0 != result) {
                 _logger.error("Application: kws::exec return {}!", result);

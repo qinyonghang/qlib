@@ -2,6 +2,7 @@
 #define AUDIO_H
 
 #include <alsa/asoundlib.h>
+#include <cmath>
 
 #include "portaudio.h"
 
@@ -92,7 +93,8 @@ protected:
                 .hostApiSpecificStreamInfo = nullptr};
 
             _sample_rate = uint32_t(device_info->defaultSampleRate);
-            if (node["sample_rate"] && node["sample_rate"].template get<string_view_t>() != "auto") {
+            if (node["sample_rate"] &&
+                node["sample_rate"].template get<string_view_t>() != "auto") {
                 _sample_rate = node["sample_rate"].template get<uint32_t>();
             }
             uint32_t frames_per_read = _sample_rate * 0.5;
@@ -107,7 +109,7 @@ protected:
                     PaStreamCallbackTimeInfo const* timeInfo, PaStreamCallbackFlags statusFlags,
                     void* userData) {
                     self* reader = (self*)(userData);
-                    reader->_logger.debug("audio::reader: received {} samples!", __count);
+                    reader->_logger.debug("audio::reader: received {} samples!", uint64_t(__count));
                     if (reader->_publisher != nullptr) {
                         uint32_t __new_count =
                             __count * reader->_out_sample_rate / reader->_sample_rate;
