@@ -15,8 +15,8 @@ set_target_properties(qlib PROPERTIES
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:include>"
 )
 
-option(BUILD_EXAMPLES "Build examples" ON)
-option(BUILD_TESTS "Build tests" ON)
+option(BUILD_EXAMPLES "Build examples" OFF)
+option(BUILD_TESTS "Build tests" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
 
 if (BUILD_EXAMPLES)

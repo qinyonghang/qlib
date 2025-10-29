@@ -61,6 +61,8 @@ protected:
     level _level{info};
 
 public:
+    sink(level __l = level::info) : _level(__l) {}
+
     virtual ~sink() = default;
     virtual void log(msg const&) = 0;
     // virtual void flush() = 0;
@@ -108,6 +110,9 @@ public:
     ALWAYS_INLINE CONSTEXPR ansicolor_sink(stream_type& __s)
             : _stream(__s), _mutex(mutex_type::instance()) {}
 
+    ALWAYS_INLINE CONSTEXPR ansicolor_sink(level __l, stream_type& __s)
+            : base(__l), _stream(__s), _mutex(mutex_type::instance()) {}
+
     ALWAYS_INLINE CONSTEXPR void log(msg_type const& msg) override {
         if (msg.lvl >= base::_level) {
             _mutex.lock();
@@ -134,13 +139,15 @@ public:
 template <class _Mutex>
 class ansicolor_stdout_sink : public ansicolor_sink<std::ostream, _Mutex> {
 public:
-    ansicolor_stdout_sink() : ansicolor_sink<std::ostream, _Mutex>(std::cout) {}
+    ansicolor_stdout_sink(level __l = level::info)
+            : ansicolor_sink<std::ostream, _Mutex>(__l, std::cout) {}
 };
 
 template <class _Mutex>
 class ansicolor_stderr_sink : public ansicolor_sink<std::ostream, _Mutex> {
 public:
-    ansicolor_stderr_sink() : ansicolor_sink<std::ostream, _Mutex>(std::cerr) {}
+    ansicolor_stderr_sink(level __l = level::info)
+            : ansicolor_sink<std::ostream, _Mutex>(__l, std::cerr) {}
 };
 
 using ansicolor_stdout_sink_st = ansicolor_stdout_sink<null_mutex>;

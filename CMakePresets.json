@@ -30,6 +30,14 @@
                 "CMAKE_MSVC_RUNTIME_LIBRARY": {
                     "type": "STRING",
                     "value": "MultiThreaded"
+                },
+                "BUILD_EXAMPLES": {
+                    "type": "BOOL",
+                    "value": "OFF"
+                },
+                "BUILD_TESTS": {
+                    "type": "BOOL",
+                    "value": "OFF"
                 }
             }
         },
@@ -52,6 +60,14 @@
                 "CMAKE_INSTALL_PREFIX": {
                     "type": "STRING",
                     "value": "${sourceDir}/install"
+                },
+                "BUILD_EXAMPLES": {
+                    "type": "BOOL",
+                    "value": "OFF"
+                },
+                "BUILD_TESTS": {
+                    "type": "BOOL",
+                    "value": "OFF"
                 }
             }
         },
@@ -74,6 +90,14 @@
                 "CMAKE_INSTALL_PREFIX": {
                     "type": "STRING",
                     "value": "${sourceDir}/install"
+                },
+                "BUILD_EXAMPLES": {
+                    "type": "BOOL",
+                    "value": "OFF"
+                },
+                "BUILD_TESTS": {
+                    "type": "BOOL",
+                    "value": "OFF"
                 }
             }
         }

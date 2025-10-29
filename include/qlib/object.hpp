@@ -597,7 +597,7 @@ class __is_convertible_helper<_From, _To, false> {
     template <class _To1>
     static void __test_aux(_To1) noexcept;
 
-    template <class _From1, class _To1, class = decltype(__test_aux<_To1>(std::declval<_From1>()))>
+    template <class _From1, class _To1, class = decltype(__test_aux<_To1>(declval<_From1>()))>
     static true_type __test(int);
 
     template <class, class>
@@ -666,11 +666,11 @@ struct unsigned_traits<int64_t> {
     using type = uint64_t;
 };
 
-constexpr bool_t _is_constant_evaluated_(int) noexcept {
+ALWAYS_INLINE constexpr bool_t _is_constant_evaluated_(int) noexcept {
     return True;
 }
 
-bool_t _is_constant_evaluated_(...) noexcept {
+ALWAYS_INLINE bool_t _is_constant_evaluated_(...) noexcept {
     return False;
 }
 
