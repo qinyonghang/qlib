@@ -208,7 +208,7 @@ public:
 
     value() = default;
 
-    ALWAYS_INLINE CONSTEXPR value(self&& __o) : base(move(__o)), _type(__o._type), _impl(__o._impl) {
+    ALWAYS_INLINE CONSTEXPR value(self&& __o) : base(qlib::move(__o)), _type(__o._type), _impl(__o._impl) {
         __o._type = yaml::null;
     }
 
@@ -231,7 +231,7 @@ public:
 
     self& operator=(self&& __o) {
         this->~value();
-        new (this) self(move(__o));
+        new (this) self(qlib::move(__o));
         return *this;
     }
 
@@ -257,7 +257,7 @@ public:
     template <class _Tp>
     NODISCARD ALWAYS_INLINE CONSTEXPR remove_cvref_t<_Tp> get(_Tp&& default_value) const {
         if (empty()) {
-            return move(default_value);
+            return qlib::move(default_value);
         }
         return get<_Tp>();
     }
@@ -448,7 +448,7 @@ protected:
         ALWAYS_INLINE CONSTEXPR auto type(uint8_t __char) const noexcept { return _impl[__char]; };
     };
 
-#if __cplusplus >= 201703L
+#if defined(_cpp17_)
     CONSTEXPR static char_helper _char_helper{};
 #else  // C++14
     CONSTEXPR static char_helper _char_helper;
@@ -618,14 +618,14 @@ public:
                 break;
             }
 
-            *__yaml = move(__root);
+            *__yaml = qlib::move(__root);
         } while (false);
 
         return __result;
     }
 };
 
-#if __cplusplus < 201703L
+#if !defined(_cpp17_)
 template <class Json>
 typename parser<Json>::char_helper parser<Json>::_char_helper{};
 #endif

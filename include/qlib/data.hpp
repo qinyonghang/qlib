@@ -43,13 +43,13 @@ protected:
     template <class _uKey, class _uValue = value_type>
     ALWAYS_INLINE CONSTEXPR enable_if_t<is_base_of_v<allocator_ref, _uValue>, void> _emplace_(
         _uKey&& __key) {
-        _map.emplace_back(forward<_uKey>(__key), value_type{_map.allocator()});
+        _map.emplace_back(qlib::forward<_uKey>(__key), value_type{_map.allocator()});
     }
 
     template <class _uKey, class _uValue = value_type>
     ALWAYS_INLINE CONSTEXPR enable_if_t<!is_base_of_v<allocator_ref, _uValue>, void> _emplace_(
         _uKey&& __key) {
-        _map.emplace_back(forward<_uKey>(__key), value_type{});
+        _map.emplace_back(qlib::forward<_uKey>(__key), value_type{});
     }
 
 public:
@@ -68,7 +68,7 @@ public:
             _map.begin(), _map.end(), __key,
             [](pair<key_type, value_type> const& __a, _uKey const& __b) { return __a.key == __b; });
         if (__it == _map.end()) {
-            _emplace_(forward<_uKey>(__key));
+            _emplace_(qlib::forward<_uKey>(__key));
             return _map.back().value;
         } else {
             return __it->value;
@@ -106,18 +106,18 @@ protected:
     ALWAYS_INLINE CONSTEXPR enable_if_t<!is_container_v<_uValue>, void> _emplace_(
         _Args&&... __args) {
         if (_impl) {
-            _impl(forward<_Args>(__args)...);
+            _impl(qlib::forward<_Args>(__args)...);
         }
     }
 
 public:
     template <class _Key, class _uManager>
     ALWAYS_INLINE CONSTEXPR publisher(_Key&& __key, _uManager&& __manager)
-            : base(forward<_uManager>(__manager)), _impl{_manager_()[forward<_Key>(__key)]} {}
+            : base(qlib::forward<_uManager>(__manager)), _impl{_manager_()[qlib::forward<_Key>(__key)]} {}
 
     template <class... _Args>
     ALWAYS_INLINE CONSTEXPR void publish(_Args&&... __args) {
-        _emplace_(forward<_Args>(__args)...);
+        _emplace_(qlib::forward<_Args>(__args)...);
     }
 };
 
@@ -139,20 +139,20 @@ protected:
 
     template <class _uValue = value_type, class... _Args>
     ALWAYS_INLINE CONSTEXPR enable_if_t<is_container_v<_uValue>, void> _init_(_Args&&... __args) {
-        _impl.emplace_back(forward<_Args>(__args)...);
+        _impl.emplace_back(qlib::forward<_Args>(__args)...);
     }
 
     template <class _uValue = value_type, class... _Args>
     ALWAYS_INLINE CONSTEXPR enable_if_t<!is_container_v<_uValue>, void> _init_(_Args&&... __args) {
         throw_if(static_cast<bool_t>(_impl), redundant_key{});
-        _impl = value_type(forward<_Args>(__args)...);
+        _impl = value_type(qlib::forward<_Args>(__args)...);
     }
 
 public:
     template <class _Key, class _Value, class _uManager>
     ALWAYS_INLINE CONSTEXPR subscriber(_Key&& __key, _Value&& __value, _uManager&& __manager)
-            : base(forward<_uManager>(__manager)), _impl{_manager_()[forward<_Key>(__key)]} {
-        _init_(forward<_Value>(__value));
+            : base(qlib::forward<_uManager>(__manager)), _impl{_manager_()[qlib::forward<_Key>(__key)]} {
+        _init_(qlib::forward<_Value>(__value));
     }
 };
 

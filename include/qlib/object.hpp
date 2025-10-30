@@ -1,18 +1,30 @@
-#pragma once
+#ifndef QLIB_OBJECT_HPP
+#define QLIB_OBJECT_HPP
 
-#define OBJECT_IMPLEMENTATION
-
-namespace qlib {
+#if (defined(__GNUC__) && __cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
+#define _cpp17_
+#endif
 
 #define NODISCARD [[nodiscard]]
+#if defined(__GNUC__) || defined(__clang__)
 #define ATTR_UNUSED __attribute__((__unused__))
-#if __cplusplus >= 201703L
+#else
+#define ATTR_UNUSED
+#endif
+#if defined(_cpp17_)
+#if defined(__GNUC__) || defined(__clang__)
 #define ALWAYS_INLINE inline __attribute__((always_inline))
 #define CONSTEXPR constexpr
 #else
 #define ALWAYS_INLINE inline
 #define CONSTEXPR
 #endif
+#else
+#define ALWAYS_INLINE inline
+#define CONSTEXPR
+#endif
+
+namespace qlib {
 
 using int8_t = char;
 using uint8_t = unsigned char;
@@ -32,6 +44,105 @@ using size_t = decltype(sizeof(0));
 using bool_t = bool;
 constexpr bool_t True = true;
 constexpr bool_t False = false;
+
+ALWAYS_INLINE CONSTEXPR int32_t _memcmp_(void const* __s1, void const* __s2, size_t __l) noexcept {
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_memcmp(__s1, __s2, __l);
+#elif defined(_MSC_VER) && (defined(_STRING_H) || defined(_CSTRING_))
+    return memcmp(__s1, __s2, __l);
+#else
+    auto __u1 = (uint8_t*)__s1;
+    auto __u2 = (uint8_t*)__s2;
+    int32_t result{0u};
+    for (size_t i = 0u; i < __l; ++i) {
+        if (__u1[i] != __u2[i]) {
+            result = __u1[i] < __u2[i] ? -1 : 1;
+            break;
+        }
+    }
+    return result;
+#endif
+}
+
+ALWAYS_INLINE CONSTEXPR void* _memmove_(void* __dst, void const* __src, size_t __l) noexcept {
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_memmove(__dst, __src, __l);
+#elif defined(_MSC_VER) && (defined(_STRING_H) || defined(_CSTRING_))
+    return memmove(__dst, __src, __l);
+#else
+    if (__dst <= __src || (uint8_t*)__dst >= (uint8_t*)__src + __l) {
+        uint8_t* __d = (uint8_t*)__dst;
+        uint8_t const* __s = (uint8_t const*)__src;
+        for (size_t i = 0; i < __l; ++i) {
+            __d[i] = __s[i];
+        }
+    } else {
+        uint8_t* __d = (uint8_t*)__dst + __l;
+        uint8_t const* __s = (uint8_t const*)__src + __l;
+        for (size_t i = 0; i < __l; ++i) {
+            --__d;
+            --__s;
+            *__d = *__s;
+        }
+    }
+    return __dst;
+#endif
+}
+
+ALWAYS_INLINE CONSTEXPR void* _memcpy_(void* __dst, void const* __src, size_t __l) noexcept {
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_memcpy(__dst, __src, __l);
+#elif defined(_MSC_VER) && (defined(_STRING_H) || defined(_CSTRING_))
+    return memcpy(__dst, __src, __l);
+#else
+    for (size_t i = 0; i < __l; ++i) {
+        ((uint8_t*)__dst)[i] = ((uint8_t const*)__src)[i];
+    }
+    return __dst;
+#endif
+}
+
+ALWAYS_INLINE CONSTEXPR bool_t _isnan_(float64_t __v) noexcept {
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_isnan(__v);
+#elif defined(_MSC_VER) && (defined(_CMATH_))
+    return isnan(__v);
+#else
+    union {
+        float64_t f;
+        uint64_t bits;
+    } u = {__v};
+
+    uint64_t const exp_mask = 0x7FF0000000000000ULL;
+    uint64_t exp_bits = u.bits & exp_mask;
+
+    uint64_t const mantissa_mask = 0x000FFFFFFFFFFFFFULL;
+    uint64_t mantissa_bits = u.bits & mantissa_mask;
+
+    return (exp_bits == exp_mask) && (mantissa_bits != 0ULL);
+#endif
+}
+
+ALWAYS_INLINE CONSTEXPR bool_t _isinf_(float64_t __v) noexcept {
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_isinf(__v);
+#elif defined(_MSC_VER) && (defined(_CMATH_))
+    return isinf(__v);
+#else
+    union {
+        float64_t f;
+        uint64_t bits;
+    } u = {__v};
+
+    uint64_t const exp_mask = 0x7FF0000000000000ULL;
+    uint64_t exp_bits = u.bits & exp_mask;
+
+    uint64_t const mantissa_mask = 0x000FFFFFFFFFFFFFULL;
+    uint64_t mantissa_bits = u.bits & mantissa_mask;
+
+    return (exp_bits == exp_mask) && (mantissa_bits == 0ULL);
+#endif
+}
 
 class object {
 public:
@@ -94,16 +205,20 @@ struct traits<std::function<_Res(_Args...)>> : public object {
 #endif
 
 NODISCARD ALWAYS_INLINE CONSTEXPR auto likely(bool_t ok) noexcept {
+#ifdef __GNUC__
     return __builtin_expect(ok, 1);
+#else
+    return ok;
+#endif
 }
-
-// #define likely(ok) __builtin_expect(ok, 1)
 
 NODISCARD ALWAYS_INLINE CONSTEXPR auto unlikely(bool_t ok) noexcept {
+#ifdef __GNUC__
     return __builtin_expect(ok, 0);
+#else
+    return ok;
+#endif
 }
-
-// #define unlikely(ok) __builtin_expect(ok, 0)
 
 class exception : public object {
 public:
@@ -199,8 +314,10 @@ template <>
 struct _is_unsigned_helper<uint32_t> : public true_type {};
 template <>
 struct _is_unsigned_helper<uint64_t> : public true_type {};
+#ifdef __GNUC__
 template <>
 struct _is_unsigned_helper<size_t> : public true_type {};
+#endif
 
 template <class T>
 struct is_unsigned : public _is_unsigned_helper<remove_cv_t<T>> {};
@@ -417,12 +534,12 @@ struct _is_pointer_helper : public false_type {};
 template <typename _Tp>
 struct _is_pointer_helper<_Tp*> : public true_type {};
 
-#ifdef _UNIQUE_PTR_H
+#if (defined(__GNUC__) && defined(_UNIQUE_PTR_H)) || (defined(_MSC_VER) && defined(_MEMORY_))
 template <class _Tp, class _Dp>
 struct _is_pointer_helper<std::unique_ptr<_Tp, _Dp>> : public true_type {};
 #endif
 
-#ifdef _SHARED_PTR_H
+#if (defined(__GNUC__) && defined(_SHARED_PTR_H)) || (defined(_MSC_VER) && defined(_MEMORY_))
 template <class _Tp>
 struct _is_pointer_helper<std::shared_ptr<_Tp>> : public true_type {};
 #endif
@@ -590,8 +707,10 @@ struct __is_convertible_helper {
     typedef class is_void<_To>::type type;
 };
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wctor-dtor-privacy"
+#endif
 template <class _From, class _To>
 class __is_convertible_helper<_From, _To, false> {
     template <class _To1>
@@ -606,7 +725,9 @@ class __is_convertible_helper<_From, _To, false> {
 public:
     typedef decltype(__test<_From, _To>(0)) type;
 };
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 
 template <class _From, class _To>
 struct is_convertible : public __is_convertible_helper<_From, _To>::type {};
@@ -678,8 +799,6 @@ ALWAYS_INLINE constexpr auto is_constant_evaluated() {
     return _is_constant_evaluated_(0);
 }
 
-#ifndef _MOVE_H
-
 template <class _Tp>
 ALWAYS_INLINE constexpr _Tp&& forward(remove_reference_t<_Tp>& t) noexcept {
     return static_cast<_Tp&&>(t);
@@ -694,13 +813,6 @@ template <class _Tp>
 NODISCARD CONSTEXPR remove_reference_t<_Tp>&& move(_Tp&& __t) noexcept {
     return static_cast<remove_reference_t<_Tp>&&>(__t);
 }
-
-#else
-
-using std::forward;
-using std::move;
-
-#endif
 
 template <class _Key, class _Value>
 struct pair : public object {
@@ -719,7 +831,7 @@ struct pair : public object {
 
     template <class _uKey, class _uValue>
     ALWAYS_INLINE CONSTEXPR pair(_uKey&& __key, _uValue&& __value)
-            : key(forward<_uKey>(__key)), value(forward<_uValue>(__value)) {}
+            : key(qlib::forward<_uKey>(__key)), value(qlib::forward<_uValue>(__value)) {}
 };
 
 template <class Tag>
@@ -781,7 +893,7 @@ struct _equal_helper<True> {
 
         const auto size = distance(begin1, end1);
         if (likely(begin1 != begin2 && size > 0)) {
-            return __builtin_memcmp(begin1, begin2, sizeof(T) * size) == 0;
+            return _memcmp_(begin1, begin2, sizeof(T) * size) == 0;
         }
         return True;
     }
@@ -824,7 +936,7 @@ struct _copy_helper<True> {
         }
         const auto size = distance(begin1, end1);
         if (likely(begin1 != begin2 && size > 0)) {
-            __builtin_memmove(begin2, begin1, sizeof(T) * size);
+            _memmove_(begin2, begin1, sizeof(T) * size);
         }
         return begin2 + size;
     }
@@ -964,9 +1076,11 @@ NODISCARD ALWAYS_INLINE CONSTEXPR auto len(int64_t __v) -> size_t {
     return __v >= 0 ? len(uint64_t(__v)) : len(uint64_t(uint64_t(~__v) + 1u)) + 1u;
 }
 
+#ifdef __GNUC__
 NODISCARD ALWAYS_INLINE CONSTEXPR auto len(size_t __v) -> size_t {
     return len(uint64_t(__v));
 }
+#endif
 
 template <class Char>
 NODISCARD ALWAYS_INLINE constexpr size_t len(Char const* str) noexcept {
@@ -979,7 +1093,7 @@ NODISCARD ALWAYS_INLINE constexpr size_t len(Char const* str) noexcept {
 
 template <class _Tp>
 [[noreturn]] ALWAYS_INLINE CONSTEXPR auto __throw(_Tp&& __e) {
-    throw forward<_Tp>(__e);
+    throw qlib::forward<_Tp>(__e);
 }
 
 // template <class _Tp>
@@ -988,13 +1102,13 @@ template <class _Tp>
 template <class _Tp>
 ALWAYS_INLINE CONSTEXPR auto throw_if(bool_t __ok, _Tp&& __e) {
     if (unlikely(__ok)) {
-        __throw(forward<_Tp>(__e));
+        __throw(qlib::forward<_Tp>(__e));
     }
 }
 
 template <class _Tp>
 ALWAYS_INLINE CONSTEXPR auto throw_if_not(bool_t __ok, _Tp&& __e) {
-    throw_if(!__ok, forward<_Tp>(__e));
+    throw_if(!__ok, qlib::forward<_Tp>(__e));
 }
 
 ALWAYS_INLINE CONSTEXPR auto throw_if(bool_t __ok) {
@@ -1028,10 +1142,8 @@ ALWAYS_INLINE CONSTEXPR auto throw_if_not(bool_t __ok, char const* __str) {
 
 template <size_t _Len, size_t _Align>
 struct aligned_storage {
-    union type {
-        uint8_t __data[_Len];
-        struct __attribute__((__aligned__((_Align)))) {
-        } __align;
+    struct type {
+        alignas(_Align) uint8_t __data[_Len];
     };
 };
 
@@ -1061,22 +1173,8 @@ struct union_storage final : public object {
 
     enum : size_t { max_size = max_of<Args...>(), max_align = max_align_of<Args...>() };
 
-    union {
-        uint8_t _value[max_size];
-        struct __attribute__((__aligned__(max_align))) {
-        } __align;
-    };
+    typename aligned_storage<max_size, max_align>::type _data;
 };
-
-template <class _Tp>
-auto max(_Tp a, _Tp b) {
-    return a < b ? b : a;
-}
-
-template <class _Tp>
-auto min(_Tp a, _Tp b) {
-    return a < b ? a : b;
-}
 
 template <class _Tp, class _Iter1, class _Iter2>
 NODISCARD ALWAYS_INLINE CONSTEXPR auto find(_Iter1 __first, _Iter2 __last, _Tp const& __value) {
@@ -1103,7 +1201,7 @@ NODISCARD ALWAYS_INLINE CONSTEXPR auto find(_Iter1 __first,
     return __i;
 }
 
-#if defined(_TIME_H)
+#if (defined(__GNUC__) && defined(_TIME_H)) || (defined(_MSC_VER) && defined(_INC_TIME))
 NODISCARD ALWAYS_INLINE auto localtime(time_t __t) {
     struct tm local_tm;
 #ifdef _MSC_VER
@@ -1116,3 +1214,5 @@ NODISCARD ALWAYS_INLINE auto localtime(time_t __t) {
 #endif
 
 };  // namespace qlib
+
+#endif

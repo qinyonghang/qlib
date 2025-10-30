@@ -7,7 +7,7 @@
 
 namespace qlib {
 
-namespace log {
+namespace logger {
 
 enum level : uint8_t { trace, debug, info, warn, err, critical, off, n_levels };
 
@@ -27,7 +27,7 @@ public:
     }
 };
 
-#ifdef _GLIBCXX_MUTEX_H
+#if defined(_GLIBCXX_MUTEX_H) || (defined(_MSC_VER) && defined(_MUTEX_))
 class mutex {
 protected:
     std::mutex _mutex;
@@ -45,7 +45,7 @@ public:
 
 struct msg : public object {
     level lvl;
-#ifdef _GLIBCXX_CHRONO
+#if defined(_GLIBCXX_CHRONO) || (defined(_MSC_VER) && defined(_CHRONO_))
     string_view_t tp;
 #endif
     string_view_t name;
@@ -87,7 +87,8 @@ protected:
 
     using level_pair = pair<string_view_t, string_view_t>;
 
-    constexpr static level_pair __map[n_levels] = {
+#if defined(__GNUC__) || defined(__clang__)
+    constexpr static level_pair __map[n_levels]{
         level_pair("trace", "\033[37m"),            // white
         level_pair("debug", "\033[36m"),            // cyan
         level_pair("info", "\033[32m"),             // green
@@ -96,6 +97,17 @@ protected:
         level_pair("critical", "\033[1m\033[41m"),  // bold_on_red
         level_pair("off", "\033[m")                 // reset
     };
+#elif defined(_MSC_VER)
+    const static inline level_pair __map[n_levels]{
+        level_pair("trace", "\033[37m"),            // white
+        level_pair("debug", "\033[36m"),            // cyan
+        level_pair("info", "\033[32m"),             // green
+        level_pair("warn", "\033[33m\033[1m"),      // yellow_bold
+        level_pair("error", "\033[31m\033[1m"),     // red_bold
+        level_pair("critical", "\033[1m\033[41m"),  // bold_on_red
+        level_pair("off", "\033[m")                 // reset
+    };
+#endif
 
     ALWAYS_INLINE CONSTEXPR static auto& _level_(level __l) { return __map[__l]; }
 
@@ -118,7 +130,7 @@ public:
             _mutex.lock();
             auto& l = _level_(msg.lvl);
             auto& off = _level_(level::off);
-#ifdef _GLIBCXX_CHRONO
+#if defined(_GLIBCXX_CHRONO) || (defined(_MSC_VER) && defined(_CHRONO_))
             _stream << "[" << msg.tp << "] ";
 #endif
             _stream << "[" << msg.name << "] [" << l.value << l.key << off.value << "] " << msg.data
@@ -135,7 +147,7 @@ public:
     // void set_formatter(std::unique_ptr<spdlog::formatter> sink_formatter) override;
 };
 
-#ifdef _GLIBCXX_IOSFWD
+#if defined(_GLIBCXX_IOSFWD) || (defined(_MSC_VER) && defined(_IOSTREAM_))
 template <class _Mutex>
 class ansicolor_stdout_sink : public ansicolor_sink<std::ostream, _Mutex> {
 public:
@@ -152,7 +164,7 @@ public:
 
 using ansicolor_stdout_sink_st = ansicolor_stdout_sink<null_mutex>;
 using ansicolor_stderr_sink_st = ansicolor_stderr_sink<null_mutex>;
-#ifdef _GLIBCXX_MUTEX_H
+#if defined(_GLIBCXX_MUTEX_H) || (defined(_MSC_VER) && defined(_MUTEX_))
 using ansicolor_stdout_sink_mt = ansicolor_stdout_sink<mutex>;
 using ansicolor_stderr_sink_mt = ansicolor_stderr_sink<mutex>;
 #endif
@@ -190,7 +202,7 @@ public:
     ALWAYS_INLINE CONSTEXPR void log(msg_type const& msg) override {
         if (msg.lvl >= base::_level) {
             _mutex.lock();
-#ifdef _GLIBCXX_CHRONO
+#if defined(_GLIBCXX_CHRONO) || (defined(_MSC_VER) && defined(_CHRONO_))
             _stream << "[" << msg.tp << "] ";
 #endif
             _stream << "[" << msg.name << "] [" << map[msg.lvl] << "] " << msg.data << "\n";
@@ -200,9 +212,9 @@ public:
     }
 };
 
-#ifdef _GLIBCXX_FSTREAM
+#if defined(_GLIBCXX_FSTREAM) || (defined(_MSC_VER) && defined(_IOSFWD_))
 using file_sink_st = file_sink<std::ofstream, null_mutex>;
-#ifdef _GLIBCXX_MUTEX_H
+#if defined(_GLIBCXX_MUTEX_H) || (defined(_MSC_VER) && defined(_MUTEX_))
 using file_sink_mt = file_sink<std::ofstream, mutex>;
 #endif
 #endif
@@ -223,23 +235,22 @@ protected:
     sinks_type _sinks;
 
     struct formatter final : public object {
-#ifdef _GLIBCXX_CHRONO
+#if defined(_GLIBCXX_CHRONO) || (defined(_MSC_VER) && defined(_CHRONO_))
         fmt::array<char, 32u> _time_str;
 #endif
         string_type _data;
         template <class... _Args>
         ALWAYS_INLINE CONSTEXPR msg_type operator()(string_view name, level lvl, _Args&&... args) {
-#ifdef _GLIBCXX_CHRONO
+            _data = fmt::format(qlib::forward<_Args>(args)...);
+            msg_type msg;
+            msg.lvl = lvl;
+            msg.name = name;
+            msg.data = _data;
+#if defined(_GLIBCXX_CHRONO) || (defined(_MSC_VER) && defined(_CHRONO_))
             _time_str =
                 fmt::bformat<32u>("{:%Y-%m-%d %H:%M:%S.%3f}", std::chrono::system_clock::now());
+            msg.tp = string_view_t{_time_str.begin(), _time_str.end()};
 #endif
-            _data = fmt::format(forward<_Args>(args)...);
-            msg_type msg{.lvl = lvl,
-#ifdef _GLIBCXX_CHRONO
-                         .tp = string_view_t(_time_str.begin(), _time_str.end()),
-#endif
-                         .name = name,
-                         .data = _data};
             return msg;
         }
     };
@@ -247,20 +258,20 @@ protected:
     template <class _Sink, class... _Args>
     ALWAYS_INLINE CONSTEXPR static enable_if_t<is_pointer_v<_Sink>, void> _log_(_Sink& __sink,
                                                                                 _Args&&... __args) {
-        __sink->log(forward<_Args>(__args)...);
+        __sink->log(qlib::forward<_Args>(__args)...);
     }
 
     template <class _Sink, class... _Args>
     ALWAYS_INLINE CONSTEXPR static enable_if_t<!is_pointer_v<_Sink>, void> _log_(
         _Sink& __sink, _Args&&... __args) {
-        __sink.log(forward<_Args>(__args)...);
+        __sink.log(qlib::forward<_Args>(__args)...);
     }
 
     template <class _uSinks = sinks_type, class... _Args>
     ALWAYS_INLINE CONSTEXPR enable_if_t<is_container_v<_uSinks>, void> _log_(level __level,
                                                                              _Args&&... __args) {
         formatter _f;
-        auto msg = _f(_name, __level, forward<_Args>(__args)...);
+        auto msg = _f(_name, __level, qlib::forward<_Args>(__args)...);
         for (auto& sink : _sinks) {
             _log_(sink, msg);
         }
@@ -270,7 +281,7 @@ protected:
     ALWAYS_INLINE CONSTEXPR enable_if_t<!is_container_v<_uSinks>, void> _log_(level __level,
                                                                               _Args&&... __args) {
         formatter _f;
-        auto msg = _f(_name, __level, forward<_Args>(__args)...);
+        auto msg = _f(_name, __level, qlib::forward<_Args>(__args)...);
         _log_(_sinks, msg);
     }
 
@@ -279,16 +290,17 @@ public:
     value(self const&) = delete;
     self& operator=(self const&) = delete;
 
-    ALWAYS_INLINE CONSTEXPR value(self&& __o) : _name(move(__o._name)), _sinks(move(__o._sinks)) {}
+    ALWAYS_INLINE CONSTEXPR value(self&& __o)
+            : _name(qlib::move(__o._name)), _sinks(qlib::move(__o._sinks)) {}
 
     template <class _uName, class _uSinks>
     ALWAYS_INLINE CONSTEXPR value(_uName&& __n, _uSinks&& __sinks)
-            : _name(forward<_uName>(__n)), _sinks(forward<_uSinks>(__sinks)) {}
+            : _name(qlib::forward<_uName>(__n)), _sinks(qlib::forward<_uSinks>(__sinks)) {}
 
     ALWAYS_INLINE CONSTEXPR self& operator=(self&& __o) {
         if (this != &__o) {
-            _name = move(__o._name);
-            _sinks = move(__o._sinks);
+            _name = qlib::move(__o._name);
+            _sinks = qlib::move(__o._sinks);
         }
         return *this;
     }
@@ -296,47 +308,49 @@ public:
     template <class... _Args>
     ALWAYS_INLINE CONSTEXPR void trace(_Args&&... __args) {
         if CONSTEXPR (static_level <= level::trace) {
-            _log_(level::trace, forward<_Args>(__args)...);
+            _log_(level::trace, qlib::forward<_Args>(__args)...);
         }
     }
 
     template <class... _Args>
     ALWAYS_INLINE CONSTEXPR void debug(_Args&&... __args) {
         if CONSTEXPR (static_level <= level::debug) {
-            _log_(level::debug, forward<_Args>(__args)...);
+            _log_(level::debug, qlib::forward<_Args>(__args)...);
         }
     }
 
     template <class... _Args>
     ALWAYS_INLINE CONSTEXPR void info(_Args&&... __args) {
         if CONSTEXPR (static_level <= level::info) {
-            _log_(level::info, forward<_Args>(__args)...);
+            _log_(level::info, qlib::forward<_Args>(__args)...);
         }
     }
 
     template <class... _Args>
     ALWAYS_INLINE CONSTEXPR void warn(_Args&&... __args) {
         if CONSTEXPR (static_level <= level::warn) {
-            _log_(level::warn, forward<_Args>(__args)...);
+            _log_(level::warn, qlib::forward<_Args>(__args)...);
         }
     }
 
     template <class... _Args>
     ALWAYS_INLINE CONSTEXPR void error(_Args&&... __args) {
         if CONSTEXPR (static_level <= level::err) {
-            _log_(level::err, forward<_Args>(__args)...);
+            _log_(level::err, qlib::forward<_Args>(__args)...);
         }
     }
 
     template <class... _Args>
     ALWAYS_INLINE CONSTEXPR void critical(_Args&&... __args) {
         if CONSTEXPR (static_level <= level::critical) {
-            _log_(level::critical, forward<_Args>(__args)...);
+            _log_(level::critical, qlib::forward<_Args>(__args)...);
         }
     }
+
+    ALWAYS_INLINE CONSTEXPR sinks_type& sinks() { return _sinks; }
 };
 
-};  // namespace log
+};  // namespace logger
 
 };  // namespace qlib
 

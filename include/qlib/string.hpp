@@ -100,7 +100,7 @@ ALWAYS_INLINE CONSTEXPR enable_if_t<is_signed_v<T>, Iter1> to_chars(Iter1 __firs
 template <class _Tp, class Iter1, class Iter2>
 ALWAYS_INLINE CONSTEXPR enable_if_t<is_floating_point_v<_Tp>, Iter1> to_chars(
     Iter1 __first, Iter2 __last, _Tp __value, size_t __precision = 6u) noexcept {
-    throw_if(__builtin_isnan(__value) || __builtin_isinf(__value));
+    throw_if(_isnan_(__value) || _isinf_(__value));
 
     size_t __len{0u};
     _Tp __val = __value;
@@ -133,10 +133,12 @@ struct char_traits final : public object {
     static constexpr size_type npos = size_type(-1);
 };
 
-template <class _Char, class _Enable = enable_if_t<is_trivially_copyable_v<_Char>>>
+template <class _Char>
 class view final : public object {
 public:
-    using self = view;
+    static_assert(is_trivially_copyable_v<_Char>, "Char must be trivially copyable");
+
+    using self = view<_Char>;
     using char_type = _Char;
     using traits_type = char_traits<_Char>;
     using value_type = typename traits_type::value_type;
@@ -145,12 +147,6 @@ public:
     using const_iterator = typename traits_type::const_iterator;
     using size_type = typename traits_type::size_type;
     constexpr static size_type npos = traits_type::npos;
-
-    constexpr static self true_str{"true"};
-    constexpr static self false_str{"false"};
-    constexpr static self null_str{"null"};
-    constexpr static self nan_str{"nan"};
-    constexpr static self inf_str{"infinity"};
 
 protected:
     const_pointer _impl{nullptr};
@@ -250,26 +246,26 @@ public:
 #endif
 };
 
-template <class _Char, class _Enable>
-constexpr view<_Char, _Enable> view<_Char, _Enable>::true_str;
+template <class _Char>
+constexpr view<_Char> true_str{"true"};
 
-template <class _Char, class _Enable>
-constexpr view<_Char, _Enable> view<_Char, _Enable>::false_str;
+template <class _Char>
+constexpr view<_Char> false_str{"false"};
 
-template <class _Char, class _Enable>
-constexpr view<_Char, _Enable> view<_Char, _Enable>::null_str;
+template <class _Char>
+constexpr view<_Char> null_str{"null"};
 
-template <class _Char, class _Enable>
-constexpr view<_Char, _Enable> view<_Char, _Enable>::nan_str;
+template <class _Char>
+constexpr view<_Char> nan_str{"nan"};
 
-template <class _Char, class _Enable>
-constexpr view<_Char, _Enable> view<_Char, _Enable>::inf_str;
+template <class _Char>
+constexpr view<_Char> inf_str{"infinity"};
 
-template <class _Char,
-          class Allocator = new_allocator_t,
-          class _Enable = enable_if_t<is_trivially_copyable_v<_Char>>>
+template <class _Char, class Allocator = new_allocator_t>
 class value : public traits<Allocator>::reference {
 public:
+    static_assert(is_trivially_copyable_v<_Char>, "Char must be trivially copyable");
+
     using base = typename traits<Allocator>::reference;
     using self = value;
     using char_type = _Char;
@@ -367,7 +363,7 @@ public:
     ALWAYS_INLINE constexpr value(self const& o) : base(o) { _init(o.begin(), o.end()); }
 
     ALWAYS_INLINE constexpr value(self&& o) noexcept
-            : base(move(o)), _impl(o._impl), _size(o._size), _capacity(o._capacity) {
+            : base(qlib::move(o)), _impl(o._impl), _size(o._size), _capacity(o._capacity) {
         o._impl = nullptr;
     }
 
@@ -526,9 +522,9 @@ public:
     ALWAYS_INLINE self& operator<<(bool_t ok) {
         view_type __view;
         if (ok) {
-            __view = view_type::true_str;
+            __view = true_str<typename view_type::char_type>;
         } else {
-            __view = view_type::false_str;
+            __view = false_str<typename view_type::char_type>;
         }
         emplace(__view.begin(), __view.end());
         return *this;
@@ -566,7 +562,7 @@ public:
 
     template <class _Tp>
     ALWAYS_INLINE enable_if_t<is_floating_point_v<_Tp>, self&> operator<<(_Tp __value) {
-        throw_if(__builtin_isnan(__value) || __builtin_isinf(__value));
+        throw_if(_isnan_(__value) || _isinf_(__value));
 
         size_t __len{0u};
         _Tp __val{__value};
@@ -625,7 +621,7 @@ public:
     template <class _Tp>
     NODISCARD ALWAYS_INLINE CONSTEXPR static enable_if_t<is_floating_point_v<_Tp>, self> from(
         _Tp __value, size_t __precision = 6u) {
-        throw_if(__builtin_isnan(__value) || __builtin_isinf(__value));
+        throw_if(_isnan_(__value) || _isinf_(__value));
 
         size_t __len{0u};
         _Tp __val{__value};
@@ -666,7 +662,7 @@ public:
 #endif
 };
 
-#ifdef _GLIBCXX_OSTREAM
+#if defined(_GLIBCXX_OSTREAM) || defined(__MSVC_OSTREAM_HPP)
 template <class _Char>
 ALWAYS_INLINE std::basic_ostream<_Char>& operator<<(std::basic_ostream<_Char>& out, view<_Char> s) {
     out.write(s.data(), s.size());

@@ -46,7 +46,7 @@ protected:
         vector_t<command> commands;
     };
 
-    logger& _logger;
+    slogger& _logger;
     bool_t _init{False};
     bool_t _exit{False};
     std::mutex _mutex;
@@ -126,7 +126,7 @@ protected:
                 _rules.emplace_back(rule{
                     .name = r["name"].get<string_view_t>(),
                     .pattern = r["pattern"].get<string_view_t>(),
-                    .commands = move(commands),
+                    .commands = qlib::move(commands),
                 });
             }
 
@@ -199,11 +199,11 @@ public:
     self& operator=(self const&) = delete;
     self& operator=(self&&) = delete;
 
-    nlu(logger& logger) : _logger{logger} {}
+    nlu(slogger& logger) : _logger{logger} {}
 
     template <class... _Args>
     nlu(_Args&&... args) {
-        int32_t result{init(forward<_Args>(args)...)};
+        int32_t result{init(qlib::forward<_Args>(args)...)};
         throw_if(0 != result, "nlu::nlu() exception!");
     }
 
@@ -214,12 +214,12 @@ public:
 
     template <class... _Args>
     auto init(_Args&&... args) {
-        return _init_(forward<_Args>(args)...);
+        return _init_(qlib::forward<_Args>(args)...);
     }
 
     template <class... _Args>
     auto exec(_Args&&... args) {
-        return _exec_(forward<_Args>(args)...);
+        return _exec_(qlib::forward<_Args>(args)...);
     }
 
     void exit() { _exit_(); }

@@ -41,7 +41,7 @@ protected:
     std::atomic<bool_t> _wakeup{False};
     std::mutex _mutex;
     std::condition_variable _cond;
-    logger& _logger;
+    slogger& _logger;
     uint32_t _in_sample_rate{0};
     uint32_t _in_max_size{0};
     uint32_t _in_window_size{512};
@@ -265,10 +265,10 @@ public:
     self& operator=(self const&) = delete;
     self& operator=(self&&) = delete;
 
-    recognizer(logger& __logger) : _logger(__logger) {}
+    recognizer(slogger& __logger) : _logger(__logger) {}
 
     template <class _Yaml>
-    recognizer(_Yaml const& __yaml, _DataManager& __manager, logger& __logger) : _logger(__logger) {
+    recognizer(_Yaml const& __yaml, _DataManager& __manager, slogger& __logger) : _logger(__logger) {
         auto result = _init_(__yaml, __manager);
         throw_if(result != 0, "recognizer: exception!");
     }
@@ -285,7 +285,7 @@ public:
 
     template <class... _Args>
     auto exec(_Args&&... __args) {
-        return _exec_(forward<_Args>(__args)...);
+        return _exec_(qlib::forward<_Args>(__args)...);
     }
 
     auto exit() {

@@ -55,21 +55,21 @@ protected:
     template <class _uValue = value_type>
     ALWAYS_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _move_(
         value_type* __dst, value_type* __src, size_type __size) noexcept {
-        __builtin_memmove(__dst, __src, __size * sizeof(value_type));
+        _memmove_(__dst, __src, __size * sizeof(value_type));
     }
 
     template <class _uValue = value_type>
     ALWAYS_INLINE CONSTEXPR enable_if_t<!is_trivially_copyable_v<_uValue>, void> _move_(
         value_type* __dst, value_type* __src, size_type __size) noexcept {
         for (size_type i = 0; i < __size; ++i) {
-            _allocator_().construct(&__dst[i], move(__src[i]));
+            _allocator_().construct(&__dst[i], qlib::move(__src[i]));
         }
     }
 
     template <class _uValue = value_type>
     ALWAYS_INLINE CONSTEXPR enable_if_t<is_trivially_copyable_v<_uValue>, void> _copy_(
         value_type* __dst, value_type* __src, size_type __size) const noexcept {
-        __builtin_memmove(__dst, __src, __size * sizeof(value_type));
+        _memmove_(__dst, __src, __size * sizeof(value_type));
     }
 
     template <class _uValue = value_type>
@@ -127,7 +127,7 @@ public:
     }
 
     ALWAYS_INLINE constexpr value(value&& other) noexcept
-            : base(move(other)), _impl(other._impl), _size(other._size),
+            : base(qlib::move(other)), _impl(other._impl), _size(other._size),
               _capacity(other._capacity) {
         other._impl = nullptr;
         other._size = 0;
@@ -154,7 +154,7 @@ public:
     template <class... Args>
     ALWAYS_INLINE self& operator=(Args&&... args) noexcept(is_nothrow_constructible_v<self, Args...>) {
         this->~value();
-        new (this) self(forward<Args>(args)...);
+        new (this) self(qlib::forward<Args>(args)...);
         return *this;
     }
 
@@ -211,14 +211,14 @@ public:
             capacity = capacity * 2u;
             _update_capacity(capacity);
         }
-        _allocator_().construct(_impl + _size, forward<Args>(args)...);
+        _allocator_().construct(_impl + _size, qlib::forward<Args>(args)...);
         ++_size;
     }
 
     template <class... Args>
     ALWAYS_INLINE constexpr void push_back(Args&&... args) noexcept(
         is_nothrow_constructible_v<value_type, Args...>) {
-        emplace_back(forward<Args>(args)...);
+        emplace_back(qlib::forward<Args>(args)...);
     }
 
     ALWAYS_INLINE constexpr void pop_back() noexcept(is_nothrow_destructible_v<value_type>) {

@@ -63,11 +63,11 @@
                 },
                 "BUILD_EXAMPLES": {
                     "type": "BOOL",
-                    "value": "OFF"
+                    "value": "ON"
                 },
                 "BUILD_TESTS": {
                     "type": "BOOL",
-                    "value": "OFF"
+                    "value": "ON"
                 }
             }
         },
@@ -91,13 +91,17 @@
                     "type": "STRING",
                     "value": "${sourceDir}/install"
                 },
+                "CMAKE_BUILD_WITH_INSTALL_RPATH": {
+                    "type": "BOOL",
+                    "value": "ON"
+                },
                 "BUILD_EXAMPLES": {
                     "type": "BOOL",
-                    "value": "OFF"
+                    "value": "ON"
                 },
                 "BUILD_TESTS": {
                     "type": "BOOL",
-                    "value": "OFF"
+                    "value": "ON"
                 }
             }
         }

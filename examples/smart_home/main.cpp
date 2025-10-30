@@ -35,7 +35,7 @@ protected:
     string_t _yaml_text{};
     yaml_view_t _config{};
     data_manager_type _data_manager{};
-    logger _logger{};
+    slogger _logger{};
     recognizer<data_manager_type> _recognizer{_logger};
     kws<data_manager_type> _kws{_logger};
     audio::reader<data_manager_type> _audio_reader{_logger};

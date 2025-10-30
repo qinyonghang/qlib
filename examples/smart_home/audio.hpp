@@ -28,7 +28,7 @@ protected:
     uint32_t _channels{1u};
     uint32_t _sample_rate{44100u};
     uint32_t _out_sample_rate{16000u};
-    logger& _logger;
+    slogger& _logger;
 
     static void _alsa_logger_(
         char const* file, int line, const char* function, int err, const char* fmt, ...) {}
@@ -146,10 +146,10 @@ public:
     self& operator=(self const&) = delete;
     self& operator=(self&&) = delete;
 
-    reader(logger& __logger) : _logger(__logger) {}
+    reader(slogger& __logger) : _logger(__logger) {}
 
     template <class _Yaml>
-    reader(_Yaml const& __node, _DataManager& __manager, logger& __logger) : _logger(__logger) {
+    reader(_Yaml const& __node, _DataManager& __manager, slogger& __logger) : _logger(__logger) {
         auto __result = _init_(__node, __manager);
         throw_if(__result != 0, "audio::reader exception");
     }
@@ -176,7 +176,7 @@ public:
 
     template <class... _Args>
     auto init(_Args&&... args) {
-        return _init_(forward<_Args>(args)...);
+        return _init_(qlib::forward<_Args>(args)...);
     }
 
     auto start() { return Pa_StartStream(_pa_stream); }

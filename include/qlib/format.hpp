@@ -39,7 +39,7 @@ protected:
             }
             char_type* __p = _allocator_().template allocate<char_type>(__new);
             if (_impl != nullptr) {
-                __builtin_memcpy(__p, _impl, _size);
+                _memcpy_(__p, _impl, _size);
             }
             auto __t = _impl;
             auto __c = _capacity;
@@ -97,12 +97,12 @@ public:
     ALWAYS_INLINE CONSTEXPR void emplace(_Iter1 __first, _Iter2 __last) {
         auto __n = distance(__first, __last);
         _reserve_(_size + __n);
-        __builtin_memcpy(_impl + _size, __first, __n);
+        _memcpy_(_impl + _size, __first, __n);
         _size += __n;
     }
 };
 
-#if __cplusplus >= 201703L
+#if defined(_cpp17_)
 template <class _Char,
           size_t _capacity,
           class _Enable = enable_if_t<is_trivially_copyable_v<_Char>>>
@@ -137,7 +137,7 @@ public:
                 _impl[_size + __i] = __first[__i];
             }
         } else {
-            __builtin_memcpy(_impl + _size, __first, __n);
+            _memcpy_(_impl + _size, __first, __n);
         }
         _size += __n;
     }
@@ -190,9 +190,9 @@ struct formatter<bool_t, _Char> final : public object {
                                             string::view<_Char> fmt ATTR_UNUSED) {
         string::view<_Char> str;
         if (value) {
-            str = string::view<_Char>::true_str;
+            str = string::true_str<_Char>;
         } else {
-            str = string::view<_Char>::false_str;
+            str = string::false_str<_Char>;
         }
         out.emplace(str.begin(), str.end());
     }
@@ -238,11 +238,11 @@ struct formatter<_Tp, _Char, enable_if_t<is_floating_point_v<_Tp>>> final : publ
 
     template <class _Stream>
     ALWAYS_INLINE CONSTEXPR void operator()(_Stream& out, _Tp value, specs const& specs) {
-        if (__builtin_isnan(value)) {
-            auto str = string::view<_Char>::nan_str;
+        if (_isnan_(value)) {
+            auto str = string::nan_str<_Char>;
             out.emplace(str.begin(), str.end());
-        } else if (__builtin_isinf(value)) {
-            auto str = string::view<_Char>::inf_str;
+        } else if (_isinf_(value)) {
+            auto str = string::inf_str<_Char>;
             out.emplace(str.begin(), str.end());
         } else {
             formatter<int64_t, _Char> f;
@@ -304,7 +304,7 @@ struct formatter<_Char[_N], _Char> final : public object {
     }
 };
 
-#if defined(_BASIC_STRING_H)
+#if (defined(__GNUC__) && defined(_BASIC_STRING_H)) || (defined(_MSC_VER) && defined(_XSTRING_))
 template <class _Char>
 struct formatter<std::basic_string<_Char>, _Char> final : public object {
     template <class _Stream>
@@ -316,7 +316,7 @@ struct formatter<std::basic_string<_Char>, _Char> final : public object {
 };
 #endif
 
-#if defined(_GLIBCXX_CHRONO)
+#if defined(_GLIBCXX_CHRONO) || (defined(_MSC_VER) && defined(_CHRONO_))
 template <class _Char>
 struct formatter<std::chrono::system_clock::time_point, _Char> final : public object {
     template <class _Stream>
@@ -505,8 +505,8 @@ ALWAYS_INLINE CONSTEXPR void _format_(_Stream& out, string::view<_Char> fmt, _Ar
 template <class... _Args>
 ALWAYS_INLINE CONSTEXPR string::value<char> format(string::view<char> fmt, _Args&&... args) {
     buffer<char> b;
-    _format_(b, fmt, forward<_Args>(args)...);
-    return _str<char>(move(b));
+    _format_(b, fmt, qlib::forward<_Args>(args)...);
+    return _str<char>(qlib::move(b));
 }
 
 template <class... _Args>
@@ -514,11 +514,11 @@ ALWAYS_INLINE CONSTEXPR auto format(string::view<char> fmt) {
     return fmt;
 }
 
-#if __cplusplus >= 201703L
+#if defined(_cpp17_)
 template <size_t _N, class... _Args>
 ALWAYS_INLINE CONSTEXPR auto bformat(string::view<char> fmt, _Args&&... args) {
     array<char, _N> b;
-    _format_(b, fmt, forward<_Args>(args)...);
+    _format_(b, fmt, qlib::forward<_Args>(args)...);
     return b;
 }
 #endif

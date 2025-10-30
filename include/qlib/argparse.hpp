@@ -131,11 +131,12 @@ protected:
 
 public:
     template <class String>
-    ALWAYS_INLINE CONSTEXPR argument(String&& name) : _name{forward<String>(name)} {}
+    ALWAYS_INLINE CONSTEXPR argument(String&& name) : _name{qlib::forward<String>(name)} {}
 
     template <class Name, class _Tp>
     ALWAYS_INLINE CONSTEXPR argument(Name&& name, _Tp&& default_value)
-            : _name{forward<Name&&>(name)}, _default_value{forward<_Tp&&>(default_value)} {}
+            : _name{qlib::forward<Name&&>(name)},
+              _default_value{qlib::forward<_Tp&&>(default_value)} {}
 
     ALWAYS_INLINE CONSTEXPR void parse(string_view value) { _value = value; }
 
@@ -143,7 +144,7 @@ public:
 
     template <class... Args, class = enable_if_t<sizeof...(Args)>>
     ALWAYS_INLINE CONSTEXPR argument& name(Args&&... args) {
-        _name = decltype(_name)(forward<Args>(args)...);
+        _name = decltype(_name)(qlib::forward<Args>(args)...);
         return *this;
     }
 
@@ -151,7 +152,7 @@ public:
 
     template <class... Args, class = enable_if_t<sizeof...(Args)>>
     ALWAYS_INLINE CONSTEXPR argument& help(Args&&... args) {
-        _help = decltype(_help)(forward<Args>(args)...);
+        _help = decltype(_help)(qlib::forward<Args>(args)...);
         return *this;
     }
 
@@ -166,7 +167,7 @@ public:
 
     template <class... Args>
     ALWAYS_INLINE CONSTEXPR argument& default_value(Args&&... args) {
-        _default_value = decltype(_default_value)(forward<Args>(args)...);
+        _default_value = decltype(_default_value)(qlib::forward<Args>(args)...);
         return *this;
     }
 
@@ -174,6 +175,11 @@ public:
         return _default_value.has_value() || (!_value.empty());
     }
 };
+
+template <class _Char>
+constexpr static string::view<_Char> _hyphen_str{"-"};
+template <class _Char>
+constexpr static string::view<_Char> _d_hyphen_str{"--"};
 
 template <class Char = char, class Allocator = new_allocator_t>
 class parser final : public traits<Allocator>::reference {
@@ -193,10 +199,9 @@ protected:
     arguments_type _positional_arguments;
     arguments_type _optional_arguments;
 
-    CONSTEXPR static string_view _hyphen_str{"-"};
-    CONSTEXPR static string_view _d_hyphen_str{"--"};
-    CONSTEXPR static string_view _h_str{"-h"};
-    CONSTEXPR static string_view _help_str{"--help"};
+    NODISCARD ALWAYS_INLINE CONSTEXPR static size_t max(size_t a, size_t b) {
+        return a > b ? a : b;
+    }
 
     NODISCARD ALWAYS_INLINE CONSTEXPR static typename argument_type::ptr _find_(
         arguments_type const& args, string_view name) noexcept {
@@ -260,7 +265,8 @@ protected:
 
 public:
     template <class String>
-    NODISCARD ALWAYS_INLINE CONSTEXPR parser(String name) noexcept : _name{forward<String>(name)} {}
+    NODISCARD ALWAYS_INLINE CONSTEXPR parser(String name) noexcept
+            : _name{qlib::forward<String>(name)} {}
 
     parser(self const&) = delete;
     parser(self&&) = delete;
@@ -279,17 +285,17 @@ public:
 
     template <class... Args>
     NODISCARD ALWAYS_INLINE CONSTEXPR argument_type& add_argument(string_view name,
-                                                                 Args&&... args) noexcept {
+                                                                  Args&&... args) noexcept {
         typename argument_type::ptr arg;
 
-        if (name.starts_with(_d_hyphen_str)) {
-            arg = new argument_type(name.data() + 2, forward<Args>(args)...);
+        if (name.starts_with(_d_hyphen_str<char_type>)) {
+            arg = new argument_type(name.data() + 2, qlib::forward<Args>(args)...);
             _optional_arguments.emplace_back(arg);
-        } else if (name.starts_with(_hyphen_str)) {
-            arg = new argument_type(name.data() + 1, forward<Args>(args)...);
+        } else if (name.starts_with(_hyphen_str<char_type>)) {
+            arg = new argument_type(name.data() + 1, qlib::forward<Args>(args)...);
             _optional_arguments.emplace_back(arg);
         } else {
-            arg = new argument_type(name, forward<Args>(args)...);
+            arg = new argument_type(name, qlib::forward<Args>(args)...);
             _positional_arguments.emplace_back(arg);
         }
 
@@ -299,9 +305,9 @@ public:
     template <typename _Tp>
     NODISCARD ALWAYS_INLINE CONSTEXPR _Tp get(string_view __name) const {
         string_view __n;
-        if (__name.starts_with(_d_hyphen_str)) {
+        if (__name.starts_with(_d_hyphen_str<char_type>)) {
             __n = __name.data() + 2;
-        } else if (__name.starts_with(_hyphen_str)) {
+        } else if (__name.starts_with(_hyphen_str<char_type>)) {
             __n = __name.data() + 1;
         } else {
             __n = __name;
@@ -322,7 +328,9 @@ public:
         int32_t result{0};
 
         do {
-            if (distance(begin, end) == 1 && (_h_str == *begin || _help_str == *begin)) {
+            string::view<char_type> help_str{"-h"};
+            string::view<char_type> dhelp_str{"--help"};
+            if (distance(begin, end) == 1 && (help_str == *begin || dhelp_str == *begin)) {
                 result = argparse::help;
                 break;
             }

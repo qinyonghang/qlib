@@ -35,7 +35,7 @@ protected:
     std::mutex _mutex;
     std::condition_variable _condition;
     std::queue<any_t> _audio_datas;
-    logger& _logger;
+    slogger& _logger;
 
     std::string _file_(string_view_t __file) const {
         std::string __f{__file.begin(), __file.end()};
@@ -119,7 +119,7 @@ protected:
             }
             ksc.keywords_file = __keywords_path;
 
-            _keyword_spotter = make_unique<KeywordSpotter>(move(KeywordSpotter::Create(ksc)));
+            _keyword_spotter = make_unique<KeywordSpotter>(qlib::move(KeywordSpotter::Create(ksc)));
 
             _init = True;
             _logger.trace("kws: init!");
@@ -178,10 +178,10 @@ public:
     self& operator=(self const&) = delete;
     self& operator=(self&&) = delete;
 
-    kws(logger& __logger) : _logger(__logger) {}
+    kws(slogger& __logger) : _logger(__logger) {}
 
     template <class _Yaml>
-    kws(_Yaml const& __node, _DataManager& __manager, logger& __logger) : _logger(__logger) {
+    kws(_Yaml const& __node, _DataManager& __manager, slogger& __logger) : _logger(__logger) {
         auto __result = _init_(__node, __manager);
         throw_if(__result != 0, "kws exception");
     }
@@ -193,12 +193,12 @@ public:
 
     template <class... _Args>
     auto init(_Args&&... args) {
-        return _init_(forward<_Args>(args)...);
+        return _init_(qlib::forward<_Args>(args)...);
     }
 
     template <class... _Args>
     auto exec(_Args&&... __args) {
-        return _run_(forward<_Args>(__args)...);
+        return _run_(qlib::forward<_Args>(__args)...);
     }
 
     auto exit() {

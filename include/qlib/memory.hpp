@@ -71,7 +71,7 @@ public:
     template <class T, class... Args>
     ALWAYS_INLINE CONSTEXPR static void construct(T* p, Args&&... args) noexcept(
         is_nothrow_constructible_v<T, Args...>) {
-        new (p) T(forward<Args>(args)...);
+        new (p) T(qlib::forward<Args>(args)...);
     }
 
     template <class T>
@@ -218,14 +218,14 @@ public:
 
     ALWAYS_INLINE CONSTEXPR
     unique_ptr(self&& __o) noexcept(is_nothrow_constructible_v<base, base&&>)
-            : base(move(__o)), _impl{__o._impl} {
+            : base(qlib::move(__o)), _impl{__o._impl} {
         __o._impl = nullptr;
     }
     ALWAYS_INLINE CONSTEXPR explicit unique_ptr(value_type* __p) noexcept : _impl(__p) {}
     template <class... _Args>
     ALWAYS_INLINE CONSTEXPR explicit unique_ptr(value_type* __p, _Args&&... __args) noexcept(
         is_nothrow_constructible_v<base, deleter_type&>)
-            : base(forward<_Args>(__args)...), _impl(__p) {}
+            : base(qlib::forward<_Args>(__args)...), _impl(__p) {}
 
     ALWAYS_INLINE ~unique_ptr() noexcept {
         if (_impl != nullptr) {
@@ -241,7 +241,7 @@ public:
     }
 
     ALWAYS_INLINE CONSTEXPR self& operator=(self&& __o) noexcept {
-        base::operator=(move(__o._deleter_()));
+        base::operator=(qlib::move(__o._deleter_()));
         reset(__o._impl);
         __o._impl = nullptr;
         return *this;
@@ -297,7 +297,7 @@ struct _is_pointer_helper<memory::unique_ptr<_Tp, _Dp>> : public true_type {};
 
 template <class _Tp, class... _Args>
 NODISCARD ALWAYS_INLINE CONSTEXPR auto make_unique(_Args&&... args) {
-    return unique_ptr_t<_Tp>{new _Tp(forward<_Args>(args)...)};
+    return unique_ptr_t<_Tp>{new _Tp(qlib::forward<_Args>(args)...)};
 }
 
 };  // namespace qlib

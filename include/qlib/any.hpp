@@ -49,7 +49,7 @@ protected:
         ALWAYS_INLINE derived(value_type* __impl) : _impl{__impl} {}
 
         template <class _Up>
-        derived(_Up&& __value) : _impl(new value_type(forward<_Up>(__value))) {}
+        derived(_Up&& __value) : _impl(new value_type(qlib::forward<_Up>(__value))) {}
 
         void construct(manager* __ptr) const override { new (__ptr) derived<value_type>(*_impl); }
 
@@ -82,7 +82,7 @@ protected:
 
         template <class _Up>
         derived(_Up&& __value) {
-            new (&_impl) _Tp(forward<_Up>(__value));
+            new (&_impl) _Tp(qlib::forward<_Up>(__value));
         }
 
         _Tp* _get_() noexcept { return (_Tp*)(&_impl); }
@@ -120,7 +120,7 @@ public:
 
     template <class _Tp, class Enable = enable_if_t<!is_same_v<remove_cvref_t<_Tp>, self>>>
     ALWAYS_INLINE CONSTEXPR value(_Tp&& value) {
-        new (&_storage) derived<remove_cvref_t<_Tp>>(forward<_Tp>(value));
+        new (&_storage) derived<remove_cvref_t<_Tp>>(qlib::forward<_Tp>(value));
     }
 
     ALWAYS_INLINE ~value() { _manager_()->destroy(); }
@@ -150,7 +150,7 @@ public:
     template <class _Tp, class Enable = enable_if_t<!is_same_v<remove_cvref_t<_Tp>, self>>>
     self& operator=(_Tp&& value) {
         _manager_()->destroy();
-        new (&_storage) derived<remove_cvref_t<_Tp>>(forward<_Tp>(value));
+        new (&_storage) derived<remove_cvref_t<_Tp>>(qlib::forward<_Tp>(value));
         return *this;
     }
 
@@ -168,7 +168,9 @@ public:
     template <class _Tp>
     NODISCARD ALWAYS_INLINE enable_if_t<sizeof(remove_cvref_t<_Tp>) <= threshold, _Tp> get() {
         using _Up = remove_cvref_t<_Tp>;
+#ifdef _TYPEINFO
         throw_if(_manager_()->type() != typeid(_Up), "bad any cast");
+#endif
         auto __ptr = static_cast<derived<_Up>*>(_manager_());
         return *((_Up*)(&__ptr->_impl));
     }
@@ -176,7 +178,9 @@ public:
     template <class _Tp>
     NODISCARD ALWAYS_INLINE enable_if_t<!(sizeof(remove_cvref_t<_Tp>) <= threshold), _Tp> get() {
         using _Up = remove_cvref_t<_Tp>;
+#ifdef _TYPEINFO
         throw_if(_manager_()->type() != typeid(_Up), "bad any cast");
+#endif
         auto __ptr = static_cast<derived<_Up>*>(_manager_());
         return *((_Up*)(__ptr->_impl));
     }
@@ -203,7 +207,7 @@ _Tp any_cast(any_t& __a) {
 
 template <class _Tp>
 _Tp any_cast(any_t&& __a) {
-    return move(__a.template get<remove_cvref_t<_Tp>&>());
+    return qlib::move(__a.template get<remove_cvref_t<_Tp>&>());
 }
 };  // namespace qlib
 

@@ -53,21 +53,29 @@ ALWAYS_INLINE CONSTEXPR auto exp(T& value, Iter1& first, Iter2 last) {
     if (*first == 'e' || *first == 'E') {
         ++first;
 
-        T sign{1u};
+        bool_t has_sign{False};
         if (*first == '-') {
-            sign = -1;
+            has_sign = True;
             ++first;
         } else if (*first == '+') {
             ++first;
         }
 
-        T _exp{0u};
+        uint32_t _exp{0u};
         while (likely(first < last && is_digit(*first))) {
             _exp = _exp * 10u + static_cast<T>(*first - '0');
             ++first;
         }
 
-        value *= (T)__builtin_powi(10, sign * _exp);
+        if (has_sign) {
+            for (uint32_t i = 0; i < _exp; ++i) {
+                value *= 0.1;
+            }
+        } else {
+            for (uint32_t i = 0; i < _exp; ++i) {
+                value *= 10;
+            }
+        }
     }
 }
 
@@ -199,7 +207,7 @@ public:
         self value;
 
         template <class Key, class Value>
-        pair(Key&& _key, Value&& _value) : key(forward<Key>(_key)), value(forward<Value>(_value)) {}
+        pair(Key&& _key, Value&& _value) : key(qlib::forward<Key>(_key)), value(qlib::forward<Value>(_value)) {}
 
         pair() = default;
         pair(pair const&) = default;
@@ -219,9 +227,6 @@ protected:
     impl_type _impl{};
 
     friend class parser<self>;
-
-    constexpr static string_view_t true_str = "true";
-    constexpr static string_view_t false_str = "false";
 
     struct FixedOutStream final : public traits<Allocator>::reference {
     protected:
@@ -252,7 +257,7 @@ protected:
         FixedOutStream(FixedOutStream const&) = delete;
         FixedOutStream& operator=(FixedOutStream const&) = delete;
         ALWAYS_INLINE FixedOutStream(FixedOutStream&& o)
-                : base(move(o)), _impl(o._impl), _size(o._size), _capacity(o._capacity) {
+                : base(qlib::move(o)), _impl(o._impl), _size(o._size), _capacity(o._capacity) {
             o._impl = nullptr;
             o._size = 0u;
             o._capacity = 0u;
@@ -260,7 +265,7 @@ protected:
 
         ALWAYS_INLINE FixedOutStream& operator=(FixedOutStream&& o) noexcept {
             this->~FixedOutStream();
-            new (this) FixedOutStream(move(o));
+            new (this) FixedOutStream(qlib::move(o));
             return *this;
         }
 
@@ -459,9 +464,9 @@ public:
         ALWAYS_INLINE self& operator=(self&&) = default;
 
         template <class... Args>
-        ALWAYS_INLINE value_ref(Args&&... args) : _impl(forward<Args>(args)...) {}
+        ALWAYS_INLINE value_ref(Args&&... args) : _impl(qlib::forward<Args>(args)...) {}
 
-        ALWAYS_INLINE value_type operator*() const noexcept { return move(_impl); }
+        ALWAYS_INLINE value_type operator*() const noexcept { return qlib::move(_impl); }
     };
 
     // template <class Enable = enable_if_t<is_constructible_v<base>>>
@@ -480,11 +485,11 @@ public:
         new (&_impl) type(value);                                                                  \
     }                                                                                              \
     ALWAYS_INLINE constexpr value(type&& value) : _type(enum_value) {                              \
-        new (&_impl) type(move(value));                                                            \
+        new (&_impl) type(qlib::move(value));                                                            \
     }                                                                                              \
     ALWAYS_INLINE constexpr value(type&& value, allocator_type& allocator)                         \
             : base(allocator), _type(enum_value) {                                                 \
-        new (&_impl) type(move(value));                                                            \
+        new (&_impl) type(qlib::move(value));                                                            \
     }
 
     REGISTER_CONSTRUCTOR(value_enum::object, object_type)
@@ -516,12 +521,12 @@ public:
     }
 
     ALWAYS_INLINE constexpr value(string_t&& value) : _type(value_enum::string) {
-        new (&_impl) string_type(move(value));
+        new (&_impl) string_type(qlib::move(value));
     }
 
     ALWAYS_INLINE constexpr value(string_t&& value, allocator_type& allocator)
             : base(allocator), _type(value_enum::string) {
-        new (&_impl) string_type(move(value));
+        new (&_impl) string_type(qlib::move(value));
     }
 
     template <class T, class Enable = enable_if_t<is_number_v<T>>>
@@ -531,12 +536,14 @@ public:
 
     // template <class Enable = enable_if_t<is_constructible_v<base>>>
     constexpr value(bool_t value) : _type(value_enum::boolean) {
-        new (&_impl) string_view_t(value ? true_str : false_str);
+        new (&_impl)
+            string_view_t(value ? string::true_str<char_type> : string::false_str<char_type>);
     }
 
     constexpr value(bool_t value, allocator_type& allocator)
             : base(allocator), _type(value_enum::boolean) {
-        new (&_impl) string_view_t(value ? true_str : false_str);
+        new (&_impl)
+            string_view_t(value ? string::true_str<char_type> : string::false_str<char_type>);
     }
 
     constexpr value(self const& o) : base(o), _type(o._type) {
@@ -569,7 +576,7 @@ public:
         }
     }
 
-    ALWAYS_INLINE CONSTEXPR value(self&& o) : base(move(o)), _type{o._type}, _impl{move(o._impl)} {
+    ALWAYS_INLINE CONSTEXPR value(self&& o) : base(qlib::move(o)), _type{o._type}, _impl{qlib::move(o._impl)} {
         o._type = value_enum::null;
     }
 
@@ -578,7 +585,7 @@ public:
         new (&_impl) object_type(list.size());
         auto object = (object_type*)(&_impl);
         for (auto const& item : list) {
-            object->emplace_back(move(*item));
+            object->emplace_back(qlib::move(*item));
         }
     }
 #endif
@@ -616,7 +623,7 @@ public:
     template <class T>
     ALWAYS_INLINE self& operator=(T&& o) {
         this->~value();
-        new (this) self(forward<T>(o), _allocator());
+        new (this) self(qlib::forward<T>(o), _allocator());
         return *this;
     }
 
@@ -630,7 +637,7 @@ public:
 
     ALWAYS_INLINE self& operator=(self&& o) {
         this->~value();
-        new (this) self(move(o));
+        new (this) self(qlib::move(o));
         return *this;
     }
 
@@ -663,9 +670,9 @@ public:
     NODISCARD ALWAYS_INLINE constexpr enable_if_t<is_same_v<T, bool_t>, T> get() const {
         throw_if(_type != value_enum::boolean, "not boolean");
         auto& value = *(string_view_t*)(&_impl);
-        if (value == true_str) {
+        if (value == string::true_str<char_type>) {
             return True;
-        } else if (value == false_str) {
+        } else if (value == string::false_str<char_type>) {
             return False;
         } else {
             __throw("not boolean");
@@ -691,7 +698,7 @@ public:
     template <class T>
     NODISCARD ALWAYS_INLINE constexpr T get(T&& default_value) const {
         if (empty()) {
-            return forward<T>(default_value);
+            return qlib::forward<T>(default_value);
         }
         return get<T>();
     }
@@ -740,7 +747,7 @@ public:
         new (&value._impl) object_type(list.size());
         auto object = (object_type*)(&value._impl);
         for (auto const& item : list) {
-            object->emplace_back(move(*item));
+            object->emplace_back(qlib::move(*item));
         }
         return value;
     }
@@ -751,7 +758,7 @@ public:
         new (&value._impl) array_type(list.size());
         auto array = (array_type*)(&value._impl);
         for (auto const& item : list) {
-            array->emplace_back(move(*item));
+            array->emplace_back(qlib::move(*item));
         }
         return value;
     }
@@ -844,14 +851,6 @@ template <class Char, memory_policy Policy, class Allocator>
 const typename value<Char, Policy, Allocator>::self value<Char, Policy, Allocator>::default_value =
     value<Char, Policy, Allocator>{};
 
-template <class Char, memory_policy Policy, class Allocator>
-constexpr
-    typename value<Char, Policy, Allocator>::string_view_t value<Char, Policy, Allocator>::true_str;
-
-template <class Char, memory_policy Policy, class Allocator>
-constexpr typename value<Char, Policy, Allocator>::string_view_t
-    value<Char, Policy, Allocator>::false_str;
-
 template <class Json>
 class parser final : public object {
 public:
@@ -902,14 +901,14 @@ protected:
     ALWAYS_INLINE enable_if_t<is_same_v<T, string_view_t>> __object_emplace(impl& layer,
                                                                             string_view_t key,
                                                                             json_type&& value) {
-        layer.object()->emplace_back(key, move(value));
+        layer.object()->emplace_back(key, qlib::move(value));
     }
 
     template <class T = key_type>
     ALWAYS_INLINE enable_if_t<!is_same_v<T, string_view_t>> __object_emplace(impl& layer,
                                                                              string_view_t key,
                                                                              json_type&& value) {
-        layer.object()->emplace_back(string_type(key, value._allocator()), move(value));
+        layer.object()->emplace_back(string_type(key, value._allocator()), qlib::move(value));
     }
 
     class char_helper final {
@@ -958,7 +957,7 @@ protected:
         }
     };
 
-#if __cplusplus >= 201703L
+#if defined(_cpp17_)
     CONSTEXPR static char_helper _char_helper{};
 #else  // C++14
     CONSTEXPR static char_helper _char_helper;
@@ -1043,7 +1042,7 @@ protected:
                             json_type value(allocator);
                             value._type = value_enum::object;
                             new (&value._impl) object_type(_capacity, allocator);
-                            __object_emplace(last_layer, key, move(value));
+                            __object_emplace(last_layer, key, qlib::move(value));
                             layers.emplace_back(&last_layer.object()->back().value.object());
                             ++begin;
                             break;
@@ -1052,7 +1051,7 @@ protected:
                             json_type value(allocator);
                             value._type = value_enum::array;
                             new (&value._impl) array_type(_capacity, allocator);
-                            __object_emplace(last_layer, key, move(value));
+                            __object_emplace(last_layer, key, qlib::move(value));
                             layers.emplace_back(&last_layer.object()->back().value.array());
                             ++begin;
                             break;
@@ -1113,7 +1112,7 @@ protected:
                             json_type value(allocator);
                             value._type = value_enum::array;
                             new (&value._impl) array_type(_capacity, allocator);
-                            last_layer.array()->emplace_back(move(value));
+                            last_layer.array()->emplace_back(qlib::move(value));
                             layers.emplace_back(&last_layer.array()->back().array());
                             ++begin;
                             break;
@@ -1130,7 +1129,7 @@ protected:
                             json_type value(allocator);
                             value._type = value_enum::object;
                             new (&value._impl) object_type(_capacity, allocator);
-                            last_layer.array()->emplace_back(move(value));
+                            last_layer.array()->emplace_back(qlib::move(value));
                             layers.emplace_back(&last_layer.array()->back().object());
                             ++begin;
                             continue;
@@ -1182,7 +1181,7 @@ protected:
             }
 
             if (result == 1) {
-                *json = move(root);
+                *json = qlib::move(root);
                 result = 0;
             }
         } while (false);
@@ -1202,7 +1201,7 @@ public:
     }
 };
 
-#if __cplusplus < 201703L
+#if !defined(_cpp17_)
 template <class Json>
 typename parser<Json>::char_helper parser<Json>::_char_helper{};
 #endif

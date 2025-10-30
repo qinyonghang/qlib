@@ -11,23 +11,23 @@ int32_t main(int32_t argc, char* argv[]) {
 
     do {
         using namespace qlib;
-        using sink1_type = log::ansicolor_sink<std::ostream>;
-        using sink2_type = log::file_sink<std::ofstream>;
-        using sinks_type = vector::value<std::shared_ptr<log::sink>>;
-        using logger_type = log::value<string_view_t, sinks_type>;
+        using sink1_type = logger::ansicolor_sink<std::ostream>;
+        using sink2_type = logger::file_sink<std::ofstream>;
+        using sinks_type = vector::value<std::shared_ptr<logger::sink>>;
+        using logger_type = logger::value<string_view_t, sinks_type>;
 
         sink1_type sink1{std::cout};
-        sink1.set_level(log::info);
+        sink1.set_level(logger::info);
         std::filesystem::path log_dir{"logs"};
         std::filesystem::create_directories(log_dir);
         auto name = fmt::format("{%Y-%m-%d-%H-%M-%S}.log", std::chrono::system_clock::now());
         auto log_path = log_dir / name.c_str();
         sink2_type sink2{log_path};
-        sink2.set_level(log::trace);
-        vector::value<std::shared_ptr<log::sink>> sinks{2};
-        sinks.emplace_back(std::make_shared<sink1_type>(move(sink1)));
-        sinks.emplace_back(std::make_shared<sink2_type>(move(sink2)));
-        logger_type logger{"qlib", move(sinks)};
+        sink2.set_level(logger::trace);
+        vector::value<std::shared_ptr<logger::sink>> sinks{2};
+        sinks.emplace_back(std::make_shared<sink1_type>(qlib::move(sink1)));
+        sinks.emplace_back(std::make_shared<sink2_type>(qlib::move(sink2)));
+        logger_type logger{"qlib", qlib::move(sinks)};
         logger.trace("this is a trace message!");
         logger.debug("this is a debug message!");
         logger.info("this is a info message!");
